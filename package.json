@@ -1,0 +1,62 @@
+{
+  "name": "pronounciation",
+  "displayName": "Pronounciation",
+  "description": "Adds a right-click menu option and keyboard shortcut to pronounce selected text (words, sentences, or paragraphs) using macOS TTS",
+  "version": "0.0.2",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:pronounciation.pronounce",
+    "onCommand:pronounciation.stop"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pronounciation.pronounce",
+        "title": "Pronounciation"
+      },
+      {
+        "command": "pronounciation.stop",
+        "title": "Stop Pronounciation"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "pronounciation.pronounce",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+ctrl+p",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "pronounciation.stop",
+        "key": "ctrl+alt+s",
+        "mac": "cmd+ctrl+s",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "pronounciation.pronounce",
+          "group": "9_cutcopypaste@100"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "say": "^0.16.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.60.0",
+    "@types/node": "14.x",
+    "eslint": "^7.27.0"
+  }
+} 
