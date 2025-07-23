@@ -3,6 +3,8 @@
   "displayName": "Pronounciation",
   "description": "Adds a right-click menu option and keyboard shortcut to pronounce selected text (words, sentences, or paragraphs) using macOS TTS",
   "version": "0.0.2",
+  "repository": "https://github.com/zznam/vs-pronounciation.git",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.75.0"
   },
