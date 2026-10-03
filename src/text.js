@@ -14,11 +14,11 @@ function prepareText(text, config) {
     let result = text.trim();
     const replacements = config.get('replacements', {});
     // Match whole Unicode words. Replacement values are literal data, never regular expressions.
-    result = result.replace(/[\p{L}\p{N}_]+/gu, word =>
+    result = result.replace(/[\p{L}\p{M}\p{N}_]+/gu, word =>
         Object.hasOwn(replacements, word) && typeof replacements[word] === 'string' ? replacements[word] : word);
     if (config.get('speakCodeIdentifiers', false)) {
         // Leave URLs, paths, email addresses, dotted names, and non-Latin words intact.
-        result = result.replace(/(?<![\p{L}\p{N}_./:@-])[A-Za-z][A-Za-z0-9_]*(?![\p{L}\p{N}_./:@-])/gu,
+        result = result.replace(/(?<![\p{L}\p{M}\p{N}_./:@-])[A-Za-z][A-Za-z0-9_]*(?![\p{L}\p{M}\p{N}_./:@-])/gu,
             word => word.replace(/([A-Z])([A-Z][a-z])/g, '$1 $2').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_+/g, ' '));
     }
     if (config.get('normalizeWhitespace', false)) result = result.replace(/\s+/gu, ' ');

@@ -58,3 +58,10 @@ test('input and replacement expansion limits prevent long speech without truncat
     h.settings.replacements = { x: 'longer' };
     assert.throws(() => prepareText('x', h.config), /Prepared text exceeds/);
 });
+
+test('combining marks stay attached to words during replacement and identifier preparation', () => {
+    const h = fakeVscode();
+    h.settings.replacements = { cafe: 'wrong', 'cafe\u0301': 'coffee' };
+    h.settings.speakCodeIdentifiers = true;
+    assert.equal(prepareText('cafe\u0301 cafe\u0301s xinCha\u0300o', h.config), 'coffee cafe\u0301s xinCha\u0300o');
+});
