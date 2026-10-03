@@ -1,3 +1,4 @@
+const { createVoiceControls } = require('./voice-controls');
 const { Playback } = require('./playback');
 const { MAX_TEXT_LENGTH, prepareText, getLine, getParagraph, getSelections } = require('./text');
 
@@ -9,7 +10,7 @@ function getText(editor, readWordAtCursor) {
     return range ? editor.document.getText(range).trim() : '';
 }
 
-function registerExtension(vscode, context, backend) {
+function registerExtension(vscode, context, backend, discoverVoices) {
     let lastText = '';
     let disposed = false;
     let inputRequest = 0;
@@ -25,6 +26,7 @@ function registerExtension(vscode, context, backend) {
         void vscode.commands.executeCommand('setContext', 'pronounciation.speaking', speaking);
     }, error => { void vscode.window.showErrorMessage(`Pronunciation: ${error.message}`); });
     void vscode.commands.executeCommand('setContext', 'pronounciation.speaking', false);
+    const voiceControls = createVoiceControls(vscode, (text, options) => playback.speak(text, options), discoverVoices);
 
     function speak(text, document) {
         const config = vscode.workspace.getConfiguration('pronounciation', document);
@@ -84,18 +86,7 @@ function registerExtension(vscode, context, backend) {
             if (!lastText) return vscode.window.showInformationMessage('Pronounce some text first, then replay it here.');
             return speak(lastText);
         },
-        async setSpeed() {
-            const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
-            const choice = await vscode.window.showQuickPick(speeds.map(speed => ({
-                label: `${speed}×`, description: speed === 1 ? 'Normal speed' : '', speed
-            })), { placeHolder: 'Choose pronunciation speed for the next playback' });
-            if (!choice || disposed) return;
-            try {
-                await vscode.workspace.getConfiguration('pronounciation').update('speed', choice.speed, vscode.ConfigurationTarget.Global);
-            } catch (error) {
-                void vscode.window.showErrorMessage(`Could not save pronunciation speed: ${error.message}`);
-            }
-        }
+        ...voiceControls.commands
     };
     for (const [name, handler] of Object.entries(commands)) {
         context.subscriptions.push(vscode.commands.registerCommand(`pronounciation.${name}`, handler));
@@ -104,6 +95,7 @@ function registerExtension(vscode, context, backend) {
         dispose() {
             if (!disposed) {
                 disposed = true;
+                voiceControls.dispose();
                 lastText = '';
                 status.dispose();
                 void vscode.commands.executeCommand('setContext', 'pronounciation.speaking', false);

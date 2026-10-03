@@ -26,7 +26,14 @@
     "onCommand:pronounciation.clearReplay",
     "onCommand:pronounciation.stop",
     "onCommand:pronounciation.repeat",
-    "onCommand:pronounciation.setSpeed"
+    "onCommand:pronounciation.setSpeed",
+    "onCommand:pronounciation.setVoice",
+    "onCommand:pronounciation.previewVoice",
+    "onCommand:pronounciation.setCustomSpeed",
+    "onCommand:pronounciation.faster",
+    "onCommand:pronounciation.slower",
+    "onCommand:pronounciation.resetSpeed",
+    "onCommand:pronounciation.openSettings"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -74,6 +81,34 @@
       {
         "command": "pronounciation.setSpeed",
         "title": "Pronunciation: Set Speed"
+      },
+      {
+        "command": "pronounciation.setVoice",
+        "title": "Pronunciation: Choose Installed Voice"
+      },
+      {
+        "command": "pronounciation.previewVoice",
+        "title": "Pronunciation: Preview Voice"
+      },
+      {
+        "command": "pronounciation.setCustomSpeed",
+        "title": "Pronunciation: Set Custom Speed"
+      },
+      {
+        "command": "pronounciation.faster",
+        "title": "Pronunciation: Speak Faster"
+      },
+      {
+        "command": "pronounciation.slower",
+        "title": "Pronunciation: Speak Slower"
+      },
+      {
+        "command": "pronounciation.resetSpeed",
+        "title": "Pronunciation: Reset Speed"
+      },
+      {
+        "command": "pronounciation.openSettings",
+        "title": "Pronunciation: Open Settings"
       }
     ],
     "keybindings": [
