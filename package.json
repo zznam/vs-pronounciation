@@ -1,30 +1,42 @@
 {
   "name": "pronounciation",
-  "displayName": "Pronounciation",
-  "description": "Adds a right-click menu option and keyboard shortcut to pronounce selected text (words, sentences, or paragraphs) using macOS TTS",
+  "displayName": "Pronunciation",
+  "description": "Read selected text or the word at your cursor aloud using local voices, adjustable speed, and replay.",
   "version": "0.0.2",
   "repository": "https://github.com/zznam/vs-pronounciation.git",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.75.0",
+    "node": ">=22.13.0"
   },
+  "extensionKind": ["ui"],
   "categories": [
     "Other"
   ],
   "activationEvents": [
     "onCommand:pronounciation.pronounce",
-    "onCommand:pronounciation.stop"
+    "onCommand:pronounciation.stop",
+    "onCommand:pronounciation.repeat",
+    "onCommand:pronounciation.setSpeed"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
       {
         "command": "pronounciation.pronounce",
-        "title": "Pronounciation"
+        "title": "Pronunciation: Read Selection or Word"
       },
       {
         "command": "pronounciation.stop",
-        "title": "Stop Pronounciation"
+        "title": "Pronunciation: Stop"
+      },
+      {
+        "command": "pronounciation.repeat",
+        "title": "Pronunciation: Replay Last Text"
+      },
+      {
+        "command": "pronounciation.setSpeed",
+        "title": "Pronunciation: Set Speed"
       }
     ],
     "keybindings": [
@@ -39,6 +51,12 @@
         "key": "ctrl+alt+s",
         "mac": "cmd+ctrl+s",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "pronounciation.repeat",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+ctrl+r",
+        "when": "editorTextFocus"
       }
     ],
     "menus": {
@@ -46,19 +64,49 @@
         {
           "command": "pronounciation.pronounce",
           "group": "9_cutcopypaste@100"
+        },
+        {
+          "command": "pronounciation.stop",
+          "when": "pronounciation.speaking",
+          "group": "9_cutcopypaste@101"
         }
       ]
+    },
+    "configuration": {
+      "title": "Pronunciation",
+      "properties": {
+        "pronounciation.voice": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Installed system voice name. Leave empty for the default. On Linux, use a Festival name such as voice_kal_diphone."
+        },
+        "pronounciation.speed": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0.25,
+          "maximum": 3,
+          "scope": "application",
+          "description": "Relative speaking speed (0.5 is slower, 1 is normal, 2 is faster). Exact timing depends on the system voice."
+        },
+        "pronounciation.readWordAtCursor": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "Read the word at the cursor when no text is selected."
+        }
+      }
     }
   },
   "scripts": {
-    "lint": "eslint ."
-  },
-  "dependencies": {
-    "say": "^0.16.0"
+    "lint": "eslint .",
+    "test": "node --test test/*.test.js",
+    "test:integration": "node test/integration/run.js",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/** --test-coverage-include=extension.js --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 test/*.test.js",
+    "check": "npm run lint && npm run test:coverage"
   },
   "devDependencies": {
-    "@types/vscode": "^1.60.0",
-    "@types/node": "14.x",
-    "eslint": "^7.27.0"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0"
   }
-} 
+}
