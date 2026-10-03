@@ -1,6 +1,6 @@
 # Pronunciation
 
-Read selected text or the word at your cursor aloud in desktop VS Code. Uses your computer's speech engine, with voice and speed settings, replay, and a Stop control. No account, cloud API, or runtime npm dependencies are required.
+Read selected text or the word at your cursor aloud in desktop VS Code. Use offline system voices or connect OpenAI, ElevenLabs, or a custom OpenAI-compatible TTS API. Includes voice and speed settings, replay, and a Stop control. Local speech is the default and requires no account. There are no runtime npm dependencies.
 
 ## Read, replay, and stop
 
@@ -15,7 +15,11 @@ Select a word, sentence, or passage, then right-click and choose **Pronunciation
 
 While speech is playing, click **Stop pronunciation** in the status bar or use Stop from the editor context menu. A new request stops the previous one before starting. Stopping also cancels any pending replacement. Closing or disabling the extension stops playback.
 
-Replay uses the last requested passage with your **current** voice and speed, even after switching editors. Only that passage is retained in memory; it is cleared when the extension deactivates. The extension does not write selected text to disk or send it to a cloud service. Passages are limited to 50,000 characters to keep accidental large selections manageable.
+Replay uses the last requested passage with your **current** connection, voice and speed, even after switching editors. Passage text is retained in memory and cleared when the extension deactivates. Local speech never sends text to a cloud service. With an API connection selected, requested text is sent to that service and generation may incur charges. Passages are limited to 50,000 characters to keep accidental large selections manageable.
+
+API playback splits long passages into chunks of at most 2,000 characters, preferring sentence and whitespace boundaries and keeping Unicode character sequences intact. Each chunk is generated and played in order. Stop cancels the current request or audio and prevents the remaining chunks from starting. Status shows the connection name and **Generating** or **Playing**.
+
+The last completed API passage is kept as temporary WAV files for session replay. Replay reuses those files when text, connection settings, and credentials match, avoiding another API request. New passages, preference changes, **Clear Replay Text**, and normal shutdown remove cached audio. Previews use separate temporary audio and do not replace replay. Clear Replay during playback defers deletion of files in use until playback ends. An unexpected process exit can leave temporary audio in the operating system's temporary directory; there is no permanent history or export feature.
 
 ## More reading options
 
@@ -48,15 +52,35 @@ For example, `"pronounciation.speed": 0.75` slows speech down. Exact timing depe
 
 ### Voice and speed controls
 
-Use **Choose Installed Voice** to list voices on your computer. macOS and Windows show locale labels; Festival entries show their engine name. **System default** clears a configured voice, including one that has been uninstalled. **Preview Voice** plays a fixed phrase with the chosen voice and current speed without saving the choice or replacing replay text. Preview uses the same Stop control as normal speech. No voice list is cached: reopen the picker after installing voices. Discovery times out after five seconds and is cancelled on deactivation.
+With Local speech active, use **Choose Voice** to list voices on your computer. macOS and Windows show locale labels; Festival entries show their engine name. **System default** clears a configured voice, including one that has been uninstalled. **Preview Voice** plays a fixed phrase with the chosen voice and current speed without saving the choice or replacing replay text. Preview uses the same Stop control as normal speech. No voice list is cached: reopen the picker after installing voices. Discovery times out after five seconds and is cancelled on deactivation.
 
 **Set Speed** includes presets from 0.25× through 3× and marks the current speed. **Set Custom Speed** accepts any number in that range. **Speak Faster** and **Speak Slower** adjust by 0.25×, clamped at the endpoints; **Reset Speed** returns to 1×. These commands save your user preferences for the next read. **Open Settings** opens settings filtered to the `pronounciation` prefix.
+
+With an API connection active, voice and speed controls update that profile instead of your local preferences. ElevenLabs uses 0.7–1.2×; local, OpenAI and custom connections use 0.25–3×. API profiles start at 1×. The same command ID now displays **Choose Voice** and lists voices for the selected provider. OpenAI voices depend on the selected model. ElevenLabs lists account voices, with a manual voice ID option; custom APIs use manual IDs. Discovery is cancellable on deactivation. API previews use the same Stop control without saving the previewed choice.
+
+### Connect a TTS API
+
+1. Run **Pronunciation: Manage TTS Connections**, choose **Add connection**, and select OpenAI, ElevenLabs, or Custom OpenAI-compatible API.
+2. Enter a name, model, voice, and speed. OpenAI defaults to `gpt-4o-mini-tts` and `marin`; ElevenLabs defaults to `eleven_multilingual_v2`. If discovery needs an account key, enter model/voice IDs manually, then edit the connection after setting its key.
+3. Run **Pronunciation: Set API Key** and choose the connection. Keys use masked input and VS Code's encrypted SecretStorage. They are stored on this computer separately from settings and are not synced between machines. **Remove API Key** deletes a stored key.
+4. Run **Pronunciation: Test Connection** to play a fixed sample without replacing replay text. Testing and API previews may incur generation charges.
+5. Run **Pronunciation: Choose TTS Connection** to activate it, then use any existing reading command. Select **Local speech** to return to offline voices.
+
+Manage Connections also edits or removes profiles. Removing the active profile selects Local speech and deletes its key. Changing a custom endpoint through this command discards the old key; set the destination's key again. Voice, speed and connection changes affect the next request, while current playback keeps its original settings.
+
+`pronounciation.tts.profiles` stores non-secret connection metadata and `pronounciation.tts.activeProfile` stores the selected ID (`local` by default). Both are machine settings. Existing settings and keybindings work without migration. Custom connections require a complete speech URL, accepting an OpenAI-compatible JSON request with `input`, `model`, `voice`, `speed`, and `response_format: "wav"`, and returning PCM WAV audio. Bearer authentication is optional for custom endpoints. HTTPS is required except for HTTP on `localhost`, `127.0.0.1`, or `::1`; redirects are rejected.
+
+Requests time out after 60 seconds and audio responses are capped at 32 MiB per chunk. There are no automatic retries. Errors distinguish authentication, quota/rate limits, connection failures and incompatible audio without displaying provider payloads or credentials. **Read locally** continues from the failed chunk with local preferences; **Manage connections** opens setup. These actions expire after a newer read or Stop.
+
+Provider documentation: [OpenAI speech API](https://developers.openai.com/api/docs/guides/text-to-speech), [ElevenLabs speech API](https://elevenlabs.io/docs/api-reference/text-to-speech/convert), [VS Code SecretStorage](https://code.visualstudio.com/api/advanced-topics/remote-extensions#persisting-secrets).
 
 Voice discovery follows the native [Windows installed-voice API](https://learn.microsoft.com/en-us/dotnet/api/system.speech.synthesis.speechsynthesizer.getinstalledvoices?view=netframework-4.8.1) and [Festival voice registry](https://github.com/festvox/festival/blob/master/lib/voices.scm). A listed voice can still fail to speak if its installation is incomplete.
 
 The existing `pronounciation.*` command and setting prefix is intentionally preserved for compatibility with keyboard customizations. The displayed name is **Pronunciation**.
 
 ## Platform setup
+
+API WAV playback uses `afplay` on macOS, Windows PowerShell `System.Media.SoundPlayer` on Windows, and `paplay` or `aplay` on Linux. Linux users can install `pulseaudio-utils` or `alsa-utils`. Player availability is checked before generating API audio. This does not require Festival unless you also use local speech.
 
 - **macOS:** Uses the built-in `say` command. Run `say -v '?'` in Terminal to list installed voice names. For example, set the voice to `Samantha` if installed.
 - **Windows:** Uses Windows PowerShell and `System.Speech`. Install the desired desktop speech voice in Windows. Not every Windows online or Narrator voice is available to `System.Speech`.
@@ -79,6 +103,10 @@ npm run check
 
 The suite covers selection handling, Unicode and quoted input, command contributions, settings, replay, status controls, missing engines, process failures, cancellation, rapid request replacement, and cleanup. Coverage measures JavaScript paths; it does not prove native engine behavior or audio quality on every platform.
 
+API tests use mocked provider boundaries and a local HTTP server; they need no paid credentials. They cover auth headers, request/response formats, chunking, cancellation, replay cache cleanup, connection editing, secure key commands, and fallback. Paid OpenAI and ElevenLabs integrations still require a separate live check using your own credentials before claiming account-specific verification.
+
+Run `npm run test:audio` to play silent WAV fixtures through the actual platform player and verify cancellation and cleanup. This needs a working system audio output (outside a sandbox that blocks CoreAudio on macOS). CI includes a native audio job on macOS, Windows and Linux; Linux uses a PulseAudio null sink. Passing this smoke test verifies process playback and cancellation, not audible speech quality.
+
 Press **F5** to launch an Extension Development Host using the included debug configuration.
 
 ### Real extension-host smoke test
@@ -91,7 +119,7 @@ Set `VSCODE_EXECUTABLE_PATH` to the installed VS Code **application executable**
 
 Use that name in `/Applications/Visual Studio Code.app/Contents/MacOS/<executable>` for `VSCODE_EXECUTABLE_PATH`. On Windows, use the absolute path to `Code.exe`. On Linux, use the actual application executable, with a graphical session or `xvfb-run`.
 
-This test opens a temporary VS Code profile, verifies activation and commands, and removes the test profile afterward. On macOS it also exercises selection, replay, and cursor-word reading through the real `say` engine, directing output to temporary AIFF files instead of speakers. Windows and Linux currently receive activation checks only; native audio still needs platform-specific verification. This optional test is separate from the unit-test CI matrix.
+This test opens a temporary VS Code profile, verifies activation and commands, and removes the test profile afterward. On macOS it also exercises reading commands through the real `say` engine, directing output to temporary AIFF files instead of speakers. On every platform it uses a local HTTP fixture to exercise custom API requests, Unicode chunking, real WAV playback, cached replay, and cache clearing without paid credentials. The platform WAV player and a working audio output are required. This optional test is separate from the unit-test CI matrix.
 
 ## Packaging
 

@@ -5,6 +5,8 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const vscode = require('vscode');
+const http = require('node:http');
+const { wav } = require('../tts-helpers');
 
 async function run() {
     const root = path.resolve(__dirname, '../..');
@@ -13,6 +15,7 @@ async function run() {
     const originalSpawn = childProcess.spawn;
     const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'pronunciation-audio-'));
     const recordings = [];
+    let server;
     try {
         // Exercise the real macOS engine silently by redirecting its audio to a temporary file.
         childProcess.spawn = (command, args, options) => {
@@ -56,7 +59,38 @@ async function run() {
             }
         }
         await vscode.commands.executeCommand('pronounciation.stop');
+        // Exercise a real custom API request and native WAV playback without paid credentials.
+        const apiTexts = [];
+        server = http.createServer(async (request, response) => {
+            const chunks = [];
+            for await (const chunk of request) chunks.push(chunk);
+            const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+            assert.equal(body.response_format, 'wav');
+            apiTexts.push(body.input);
+            response.writeHead(200, { 'Content-Type': 'audio/wav' });
+            response.end(wav(0.1));
+        });
+        await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+        const config = vscode.workspace.getConfiguration('pronounciation');
+        const profile = { id: 'integration-api', name: 'Integration API', provider: 'custom', model: 'test-model', voice: 'test-voice', speed: 1,
+            endpoint: `http://127.0.0.1:${server.address().port}/speech` };
+        await config.update('tts.profiles', [profile], vscode.ConfigurationTarget.Global);
+        await config.update('tts.activeProfile', profile.id, vscode.ConfigurationTarget.Global);
+        const document = await vscode.workspace.openTextDocument({ content: 'Xin chào 😀 ' + 'word '.repeat(500), language: 'plaintext' });
+        const editor = await vscode.window.showTextDocument(document);
+        editor.selection = new vscode.Selection(0, 0, 0, document.getText().length);
+        await vscode.commands.executeCommand('pronounciation.pronounce');
+        assert.equal(apiTexts.join(''), document.getText().trim());
+        assert.equal(apiTexts.length, 2);
+        await vscode.commands.executeCommand('pronounciation.repeat');
+        assert.equal(apiTexts.length, 2, 'Replay must reuse generated audio');
+        await vscode.commands.executeCommand('pronounciation.clearReplay');
+        await vscode.commands.executeCommand('pronounciation.pronounce');
+        assert.equal(apiTexts.length, 4, 'Clearing replay must discard cached audio');
+        await config.update('tts.activeProfile', 'local', vscode.ConfigurationTarget.Global);
+        await config.update('tts.profiles', [], vscode.ConfigurationTarget.Global);
     } finally {
+        if (server) await new Promise(resolve => server.close(resolve));
         childProcess.spawn = originalSpawn;
         await fs.rm(temp, { recursive: true, force: true });
     }

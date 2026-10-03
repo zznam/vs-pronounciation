@@ -1,5 +1,7 @@
 # Improvement brainstorm and delivery plan
 
+Implemented after the original offline batches: configurable TTS connections for OpenAI, ElevenLabs and OpenAI-compatible custom APIs, encrypted API keys, guided native controls, sequential long-passage playback, session audio replay, and explicit local recovery. Local speech remains the default. See README.md for setup and privacy behavior. The cloud exclusions below describe the original batches rather than the current extension.
+
 Planning date: 2026-10-03. These 34 ideas build on the existing offline speech engine, replay, and Stop controls. A, B, and C identify [reading PR #2](https://github.com/zznam/vs-pronounciation/pull/2), [voice PR #3](https://github.com/zznam/vs-pronounciation/pull/3), and [reliability PR #4](https://github.com/zznam/vs-pronounciation/pull/4), all targeting `main`; features become available when their PR merges. Backlog items are ideas only. No cloud service, credential, persistent speech history, or Marketplace publication is included in these batches.
 
 | # | Feature or improvement | Benefit and acceptance criteria | Priority | Effort | Delivery |
