@@ -8,7 +8,7 @@ module.exports = [
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: 'commonjs',
-            globals: { process: 'readonly', Buffer: 'readonly', setImmediate: 'readonly', __dirname: 'readonly' }
+            globals: { AbortController: 'readonly', process: 'readonly', Buffer: 'readonly', setImmediate: 'readonly', __dirname: 'readonly' }
         },
         rules: { eqeqeq: 'error', 'no-var': 'error', 'prefer-const': 'error' }
     }

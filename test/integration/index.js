@@ -29,8 +29,8 @@ async function run() {
         };
         await extension.activate();
         const commands = await vscode.commands.getCommands(true);
-        for (const name of ['pronounce', 'stop', 'repeat', 'setSpeed']) {
-            assert.ok(commands.includes(`pronounciation.${name}`));
+        for (const { command } of require('../../package.json').contributes.commands) {
+            assert.ok(commands.includes(command));
         }
         await vscode.commands.executeCommand('pronounciation.stop');
         assert.equal(vscode.workspace.getConfiguration('pronounciation').get('speed'), 1);

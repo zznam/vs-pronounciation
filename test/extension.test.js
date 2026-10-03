@@ -5,11 +5,11 @@ const manifest = require('../package.json');
 const { registerExtension, getText, MAX_TEXT_LENGTH } = require('../src/extension');
 const { fakeBackend, fakeVscode, fakeEditor, deferred, tick } = require('./helpers');
 
-function setup() {
+function setup(discoverVoices) {
     const h = fakeVscode();
     h.backend = fakeBackend();
     h.context = { subscriptions: [] };
-    h.extension = registerExtension(h.vscode, h.context, h.backend);
+    h.extension = registerExtension(h.vscode, h.context, h.backend, discoverVoices);
     h.run = name => h.handlers.get(`pronounciation.${name}`)();
     return h;
 }
@@ -116,6 +116,27 @@ test('invalid selections do not replace the remembered text', async () => {
     await tick();
     assert.equal(h.backend.calls[1].text, 'remember me');
     h.backend.calls[1].finish();
+    await replay;
+    await h.extension.dispose();
+});
+
+test('preview uses the playback coordinator and Stop without replacing replay text', async () => {
+    const h = setup(async () => [{ name: 'Samantha', locale: 'en-US' }]);
+    h.vscode.window.activeTextEditor = fakeEditor('remember me');
+    const original = h.run('pronounce');
+    await tick();
+    h.vscode.window.showQuickPick = async choices => choices[1];
+    const preview = h.run('previewVoice');
+    await tick();
+    assert.equal(h.backend.calls[0].stops, 1);
+    assert.match(h.backend.calls[1].text, /preview/);
+    assert.equal(h.backend.calls[1].options.voice, 'Samantha');
+    await h.run('stop');
+    await Promise.all([original, preview]);
+    const replay = h.run('repeat');
+    await tick();
+    assert.equal(h.backend.calls[2].text, 'remember me');
+    h.backend.calls[2].finish();
     await replay;
     await h.extension.dispose();
 });

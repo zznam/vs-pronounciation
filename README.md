@@ -29,6 +29,14 @@ Open Settings and search for **Pronunciation**.
 
 For example, `"pronounciation.speed": 0.75` slows speech down. Exact timing depends on the operating system and voice. Changes apply to the next read or replay, not to audio already playing.
 
+### Voice and speed controls
+
+Use **Choose Installed Voice** to list voices on your computer. macOS and Windows show locale labels; Festival entries show their engine name. **System default** clears a configured voice, including one that has been uninstalled. **Preview Voice** plays a fixed phrase with the chosen voice and current speed without saving the choice or replacing replay text. Preview uses the same Stop control as normal speech. No voice list is cached: reopen the picker after installing voices. Discovery times out after five seconds and is cancelled on deactivation.
+
+**Set Speed** includes presets from 0.25× through 3× and marks the current speed. **Set Custom Speed** accepts any number in that range. **Speak Faster** and **Speak Slower** adjust by 0.25×, clamped at the endpoints; **Reset Speed** returns to 1×. These commands save your user preferences for the next read. **Open Settings** opens settings filtered to the `pronounciation` prefix.
+
+Voice discovery follows the native [Windows installed-voice API](https://learn.microsoft.com/en-us/dotnet/api/system.speech.synthesis.speechsynthesizer.getinstalledvoices?view=netframework-4.8.1) and [Festival voice registry](https://github.com/festvox/festival/blob/master/lib/voices.scm). A listed voice can still fail to speak if its installation is incomplete.
+
 The existing `pronounciation.*` command and setting prefix is intentionally preserved for compatibility with keyboard customizations. The displayed name is **Pronunciation**.
 
 ## Platform setup
