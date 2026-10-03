@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest an improvement to pronunciation or practice
+body:
+  - type: textarea
+    id: usecase
+    attributes:
+      label: What are you trying to do?
+      description: Describe the workflow and how the improvement would help.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired behavior
+      description: Include a concrete example and any platform or language requirements.
+    validations:
+      required: true

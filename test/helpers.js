@@ -36,6 +36,8 @@ function fakeChild() {
     child.stdin.end = (input, encoding) => { child.input = input; child.encoding = encoding; };
     child.stderr = new EventEmitter();
     child.stderr.setEncoding = () => {};
+    child.stdout = new EventEmitter();
+    child.stdout.setEncoding = () => {};
     child.kills = [];
     child.kill = signal => {
         child.kills.push(signal);

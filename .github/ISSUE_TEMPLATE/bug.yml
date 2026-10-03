@@ -1,0 +1,22 @@
+name: Bug report
+description: Report a pronunciation or extension problem
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Include steps, expected behavior, and the visible error. Use a harmless sample phrase.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS version, VS Code version, extension version, local or remote workspace.
+    validations:
+      required: true
+  - type: textarea
+    id: speech
+    attributes:
+      label: Speech setup
+      description: Selected voice, speed, and speech engine. Do other system apps produce audio?

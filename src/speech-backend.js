@@ -61,11 +61,11 @@ function createSpeechBackend({ platform = process.platform, spawn = spawnChild, 
                 shell: false,
                 windowsHide: true,
                 detached: platform === 'linux',
-                stdio: ['pipe', 'ignore', 'pipe']
+            stdio: ['pipe', platform === 'linux' ? 'pipe' : 'ignore', 'pipe']
             });
             let finished = false;
             let cancelled = false;
-            let stderr = '';
+            let engineError = false;
             let inputError;
             const done = new Promise((resolve, reject) => {
                 child.once('error', error => {
@@ -75,14 +75,24 @@ function createSpeechBackend({ platform = process.platform, spawn = spawnChild, 
                         : `Check that ${spec.command} is available on this computer.`;
                     reject(new Error(error.code === 'ENOENT' ? `${spec.command} was not found. ${hint}` : 'The speech process could not start.'));
                 });
-                child.stderr.setEncoding('utf8');
-                child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-4096); });
+                const watch = stream => {
+                    let tail = '';
+                    stream.setEncoding('utf8');
+                    stream.on('data', chunk => {
+                        // Keep the failure flag even if later output pushes it out of the bounded tail.
+                        const output = tail + chunk;
+                        if (/SIOD ERROR|SIOD: unknown voice/i.test(output)) engineError = true;
+                        tail = output.slice(-64);
+                    });
+                };
+                watch(child.stderr);
+                if (platform === 'linux') watch(child.stdout);
                 // A missing executable or early exit can also close stdin with EPIPE.
                 child.stdin.on('error', error => { inputError = error; });
                 child.once('close', (code, signal) => {
                     finished = true;
                     if (cancelled) return resolve();
-                    if (code !== 0 || inputError || /SIOD ERROR/i.test(stderr)) {
+                    if (code !== 0 || signal || inputError || engineError) {
                         reject(new Error(`${spec.command} could not speak (exit ${code}, signal ${signal}). Check your voice setting and system audio setup.`));
                     } else {
                         resolve();
