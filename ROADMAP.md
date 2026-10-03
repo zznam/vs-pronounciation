@@ -1,3 +1,20 @@
+# Guided reading delivery
+
+The first wave adds immutable multilingual reading sessions, manual/continuous playback, sentence navigation, explicit source commands, progress, and cancellation-aware playback outcomes.
+
+| Wave | Branch | Status / prerequisite |
+| --- | --- | --- |
+| 1 | `codex/reading-sessions` | Implemented in this feature branch; review and merge before wave 2. |
+| 2 | `codex/repeat-practice` | Planned after reading sessions merges. |
+| 2 | `codex/sentence-highlighting` | Planned after reading sessions merges. |
+| 3 | `codex/practice-sidebar` | Planned after both wave 2 PRs merge. |
+| 4 | `codex/vocabulary-bookmarks` | Planned after the sidebar merges. |
+| 4 | `codex/practice-presets` | Planned after the sidebar merges. |
+
+Use one managed worktree and one PR per topic, each targeting updated `main`. Include tests and documentation in every PR. Revalidate sibling branches after shared-file changes. Automatic merging and Marketplace publishing are excluded.
+
+---
+
 # Improvement brainstorm and delivery plan
 
 Implemented after the original offline batches: configurable TTS connections for OpenAI, ElevenLabs and OpenAI-compatible custom APIs, encrypted API keys, guided native controls, sequential long-passage playback, session audio replay, and explicit local recovery. Local speech remains the default. See README.md for setup and privacy behavior. The cloud exclusions below describe the original batches rather than the current extension.

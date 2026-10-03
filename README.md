@@ -40,6 +40,24 @@ Optional settings can split code identifiers (`getHTTPResponse` becomes `get HTT
 
 The passage limit applies before and after preparation. Its default is 50,000 characters and can be lowered to any positive integer. Oversized text is rejected with guidance and never silently truncated.
 
+## Guided reading sessions
+
+Run **Start Reading Session** to capture the primary selection, or the current paragraph when nothing is selected. Loading is silent. **Reading Session from Entire Document**, **Reading Session from Typed Text**, and **Reading Session from Clipboard** offer explicit alternative sources; clipboard access happens only on invocation.
+
+- **Play Reading Session** reads the current sentence. The default **manual** mode waits after that sentence. **Continuous** mode reads from the current sentence to the end.
+- **Next Sentence** and **Previous Sentence** stop current playback and read the chosen sentence using the session's mode. They do not wrap at the ends. **Choose Session Sentence** selects a position without speaking.
+- **Set Reading Session Mode** changes only the current session and stops playback. Set `pronounciation.reading.mode` to `continuous` to change the default for newly loaded sessions.
+- **Stop** retains the passage and current position. Play then restarts the current sentence from its beginning. The status bar shows the sentence number and connection while speaking.
+- **Clear Reading Session** stops playback, discards the session snapshot, and clears temporary audio. Ordinary **Replay Last Text** retains its existing passage; guided reading does not overwrite it.
+
+A session captures original text and prepares each sentence once with the source document's pronunciation settings. Later document edits do not alter that captured passage. Reload the session to use edited text or changed replacement settings. The input and complete prepared passage both obey the existing character limit. Sessions remain in memory only and are discarded when the extension deactivates.
+
+`pronounciation.reading.locale` accepts language tags such as `en`, `vi`, `zh`, and `ja`; its default `auto` uses the VS Code interface language. This controls sentence boundaries, not the speaking voice or automatic language detection. Segmentation uses the host's Unicode rules, with targeted English/Vietnamese title and Latin-initial handling. Blank lines always separate paragraphs. Unusual abbreviations and lowercase sentence starts can still be grouped differently from human expectations; select a shorter passage when needed.
+
+Voice, speed, and connection settings are captured at the start of each Play or navigation run. Changes take effect on the next run. A new ordinary read or voice preview interrupts the session sequence. Failures stop automatic advancement and retain the current sentence. API sessions send one sentence at a time (with the existing chunk limit for long sentences); replaying the matching last sentence reuses temporary audio. Revisiting earlier sentences can generate audio again and incur charges.
+
+Repeat practice, editor highlighting, the native sidebar, bookmarks, and presets are planned as separate follow-up PRs; they are not part of this first delivery.
+
 ## Settings
 
 Open Settings and search for **Pronunciation**.
