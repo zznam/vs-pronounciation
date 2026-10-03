@@ -57,6 +57,7 @@
     "onCommand:pronounciation.setApiKey",
     "onCommand:pronounciation.removeApiKey",
     "onCommand:pronounciation.testTtsConnection",
+    "onCommand:pronounciation.toggleReadingFollow",
     "onCommand:pronounciation.startSession",
     "onCommand:pronounciation.startDocumentSession",
     "onCommand:pronounciation.startInputSession",
@@ -162,6 +163,10 @@
       {
         "command": "pronounciation.testTtsConnection",
         "title": "Pronunciation: Test Connection"
+      },
+      {
+        "command": "pronounciation.toggleReadingFollow",
+        "title": "Pronunciation: Toggle Reading Auto-follow"
       },
       {
         "command": "pronounciation.startSession",
@@ -388,6 +393,18 @@
           "default": "manual",
           "scope": "resource",
           "description": "Default for new reading sessions. Manual reads one sentence; continuous reads from the current sentence to the end. Set Reading Session Mode changes only the loaded session."
+        },
+        "pronounciation.reading.highlightSentence": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Highlight the current guided-reading sentence in visible source editors without moving the selection."
+        },
+        "pronounciation.reading.autoFollow": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "description": "Scroll an already-visible, unchanged source editor to the current sentence during guided playback. Never opens or focuses editors."
         }
       }
     }

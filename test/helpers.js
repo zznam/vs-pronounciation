@@ -83,6 +83,8 @@ function documentEditor(content, line = 0) {
 
 function fakeVscode() {
     const handlers = new Map();
+    const events = new EventEmitter(), decorations = [];
+    const listen = name => handler => { events.on(name, handler); return { dispose: () => events.off(name, handler) }; };
     const info = [], errors = [], updates = [], contexts = [];
     const settings = {};
     const status = {
@@ -93,10 +95,12 @@ function fakeVscode() {
     };
     const config = {
         get: (key, fallback) => settings[key] ?? fallback,
-        async update(key, value, target) { settings[key] = value; updates.push({ key, value, target }); }
+        async update(key, value, target) { settings[key] = value; updates.push({ key, value, target }); events.emit('configuration', { affectsConfiguration: section => `pronounciation.${key}`.startsWith(section) }); }
     };
     const vscode = {
         Range: class { constructor(start, end) { this.start = start; this.end = end; } },
+        ThemeColor: class { constructor(id) { this.id = id; } },
+        DecorationRangeBehavior: { ClosedClosed: 1 }, TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
         StatusBarAlignment: { Right: 2 }, ConfigurationTarget: { Global: 1 },
         commands: {
             registerCommand(name, handler) {
@@ -107,6 +111,12 @@ function fakeVscode() {
         },
         window: {
             activeTextEditor: undefined,
+            visibleTextEditors: [],
+            onDidChangeVisibleTextEditors: listen('visible'),
+            createTextEditorDecorationType(options) {
+                const item = { options, disposed: false, dispose() { this.disposed = true; } };
+                decorations.push(item); return item;
+            },
             createStatusBarItem: () => status,
             showInformationMessage: message => { info.push(message); },
             showErrorMessage: message => { errors.push(message); },
@@ -114,9 +124,14 @@ function fakeVscode() {
             showQuickPick: async () => undefined
         },
         env: { clipboard: { readText: async () => '' } },
-        workspace: { getConfiguration: () => config }
+        workspace: {
+            getConfiguration: () => config,
+            onDidChangeTextDocument: listen('change'),
+            onDidCloseTextDocument: listen('close'),
+            onDidChangeConfiguration: listen('configuration')
+        }
     };
-    return { vscode, handlers, info, errors, updates, contexts, settings, status, config };
+    return { vscode, handlers, info, errors, updates, contexts, settings, status, config, events, decorations };
 }
 
 module.exports = { tick, deferred, fakeBackend, fakeChild, fakeEditor, fakeVscode, documentEditor };

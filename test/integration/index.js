@@ -31,6 +31,7 @@ async function run() {
             return child;
         };
         await extension.activate();
+        await require('./highlighting').highlighting();
         const commands = await vscode.commands.getCommands(true);
         for (const { command } of require('../../package.json').contributes.commands) {
             assert.ok(commands.includes(command));
