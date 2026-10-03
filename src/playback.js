@@ -1,8 +1,9 @@
 class Playback {
-    constructor(backend, onState, onError) {
+    constructor(backend, onState, onError, onPhase) {
         this.backend = backend;
         this.onState = onState;
         this.onError = onError;
+        this.onPhase = onPhase;
         this.current = null;
         this.request = 0;
         this.disposed = false;
@@ -15,9 +16,11 @@ class Playback {
             await this.current?.stop();
             // Only the newest request may start after the previous process has exited.
             if (request !== this.request || this.disposed) return;
-            const playback = this.backend.speak(text, options);
+            const playback = this.backend.speak(text, options, (phase, name) => {
+                if (request === this.request && !this.disposed) this.onPhase?.(phase, name);
+            });
             this.current = playback;
-            this.onState(true);
+            this.onState(true, options);
             try {
                 await playback.done;
             } finally {
@@ -27,7 +30,7 @@ class Playback {
                 }
             }
         } catch (error) {
-            if (request === this.request && !this.disposed) this.onError(error);
+            if (request === this.request && !this.disposed) this.onError(error, request);
         }
     }
 

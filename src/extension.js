@@ -1,6 +1,8 @@
 const { createVoiceControls } = require('./voice-controls');
 const { Playback } = require('./playback');
 const { MAX_TEXT_LENGTH, prepareText, getLine, getParagraph, getSelections } = require('./text');
+const { createTtsBackend } = require('./tts-backend');
+const { createTtsControls } = require('./tts-controls');
 
 function getText(editor, readWordAtCursor) {
     if (!editor.selection.isEmpty) return editor.document.getText(editor.selection).trim();
@@ -10,32 +12,49 @@ function getText(editor, readWordAtCursor) {
     return range ? editor.document.getText(range).trim() : '';
 }
 
-function registerExtension(vscode, context, backend, discoverVoices) {
+function registerExtension(vscode, context, backend, discoverVoices, ttsDependencies = {}) {
     let lastText = '';
     let disposed = false;
     let inputRequest = 0;
+    const speech = createTtsBackend(backend, { secrets: context.secrets, ...ttsDependencies });
     const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     status.name = 'Pronunciation playback';
     status.text = '$(primitive-square) Stop pronunciation';
     status.tooltip = 'Stop reading aloud';
     status.command = 'pronounciation.stop';
-    const playback = new Playback(backend, speaking => {
+    const playback = new Playback(speech, (speaking, options) => {
         if (disposed) return;
-        if (speaking) status.show();
+        if (speaking) {
+            status.text = options?.profile ? `$(primitive-square) ${options.profile.name} · Generating` : '$(primitive-square) Local speech · Playing';
+            status.show();
+        }
         else status.hide();
         void vscode.commands.executeCommand('setContext', 'pronounciation.speaking', speaking);
-    }, error => {
-        void Promise.resolve(vscode.window.showErrorMessage(`Pronunciation: ${error.message}`, 'Open Settings')).then(action => {
-            if (action === 'Open Settings' && !disposed) return vscode.commands.executeCommand('workbench.action.openSettings', 'pronounciation');
+    }, (error, request) => {
+        const inputToken = inputRequest;
+        const actions = error.cloud ? ['Read locally', 'Manage connections'] : ['Open Settings'];
+        void Promise.resolve(vscode.window.showErrorMessage(`Pronunciation: ${error.message}`, ...actions)).then(action => {
+            if (disposed || request !== playback.request || inputToken !== inputRequest) return;
+            if (action === 'Open Settings') return vscode.commands.executeCommand('workbench.action.openSettings', 'pronounciation');
+            if (action === 'Manage connections') return ttsControls.commands.manageTtsConnections();
+            if (action === 'Read locally') {
+                const config = vscode.workspace.getConfiguration('pronounciation');
+                return playback.speak(error.remainingText, { voice: config.get('voice', ''), speed: config.get('speed', 1), preview: true });
+            }
         }).catch(() => {});
+    }, (phase, name) => {
+        status.text = `$(primitive-square) ${name} · ${phase === 'generating' ? 'Generating' : 'Playing'}`;
     });
     void vscode.commands.executeCommand('setContext', 'pronounciation.speaking', false);
-    const voiceControls = createVoiceControls(vscode, (text, options) => playback.speak(text, options), discoverVoices);
+    const preview = (text, options) => { ++inputRequest; return playback.speak(text, { ...options, preview: true }); };
+    const ttsControls = createTtsControls(vscode, context, preview, () => speech.clearReplay(), ttsDependencies.providers);
+    const voiceControls = createVoiceControls(vscode, preview, discoverVoices, ttsControls);
 
     function speak(text, document) {
         const config = vscode.workspace.getConfiguration('pronounciation', document);
         lastText = text;
-        return playback.speak(text, { voice: config.get('voice', ''), speed: config.get('speed', 1) });
+        const profile = ttsControls.active(document);
+        return playback.speak(text, profile ? { profile } : { voice: config.get('voice', ''), speed: config.get('speed', 1) });
     }
 
     function read(text, document) {
@@ -70,7 +89,7 @@ function registerExtension(vscode, context, backend, discoverVoices) {
         readAllSelections() { return readEditor(editor => getSelections(editor, (start, end) => new vscode.Range(start, end))); },
         async readInput() {
             const request = ++inputRequest;
-            const text = await vscode.window.showInputBox({ title: 'Pronunciation: Read Typed Text', prompt: 'Enter a word or passage to read aloud using your local speech engine.' });
+            const text = await vscode.window.showInputBox({ title: 'Pronunciation: Read Typed Text', prompt: 'Enter a word or passage to read aloud using your selected TTS connection.' });
             if (text !== undefined && request === inputRequest) return read(text);
         },
         async readClipboard() {
@@ -83,6 +102,7 @@ function registerExtension(vscode, context, backend, discoverVoices) {
         clearReplay() {
             lastText = '';
             void vscode.window.showInformationMessage('Pronunciation replay text cleared.');
+            return speech.clearReplay();
         },
         stop() { ++inputRequest; return playback.stop(); },
         repeat() {
@@ -90,21 +110,26 @@ function registerExtension(vscode, context, backend, discoverVoices) {
             if (!lastText) return vscode.window.showInformationMessage('Pronounce some text first, then replay it here.');
             return speak(lastText);
         },
-        ...voiceControls.commands
+        ...voiceControls.commands,
+        ...ttsControls.commands
     };
     for (const [name, handler] of Object.entries(commands)) {
-        context.subscriptions.push(vscode.commands.registerCommand(`pronounciation.${name}`, handler));
+        context.subscriptions.push(vscode.commands.registerCommand(`pronounciation.${name}`, async () => {
+            try { return await handler(); }
+            catch (error) { if (!disposed) return vscode.window.showErrorMessage(`Pronunciation: ${error.message}`); }
+        }));
     }
     const extension = {
         dispose() {
             if (!disposed) {
                 disposed = true;
                 voiceControls.dispose();
+                ttsControls.dispose();
                 lastText = '';
                 status.dispose();
                 void vscode.commands.executeCommand('setContext', 'pronounciation.speaking', false);
             }
-            return playback.dispose();
+            return playback.dispose().then(() => speech.dispose());
         }
     };
     context.subscriptions.push(extension);

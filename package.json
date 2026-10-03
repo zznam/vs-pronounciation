@@ -1,9 +1,18 @@
 {
   "name": "pronounciation",
   "displayName": "Pronunciation",
-  "description": "Read selected text or the word at your cursor aloud using local voices, adjustable speed, and replay.",
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#0566ed",
+    "theme": "dark"
+  },
+  "description": "Read text aloud with local voices or configurable TTS APIs, adjustable speed, and replay.",
   "version": "0.0.2",
   "repository": "https://github.com/zznam/vs-pronounciation.git",
+  "homepage": "https://github.com/zznam/vs-pronounciation#readme",
+  "bugs": {
+    "url": "https://github.com/zznam/vs-pronounciation/issues"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.75.0",
@@ -14,6 +23,15 @@
   ],
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "text to speech",
+    "tts",
+    "pronunciation",
+    "read aloud",
+    "accessibility",
+    "openai",
+    "elevenlabs"
   ],
   "activationEvents": [
     "onCommand:pronounciation.pronounce",
@@ -33,7 +51,12 @@
     "onCommand:pronounciation.faster",
     "onCommand:pronounciation.slower",
     "onCommand:pronounciation.resetSpeed",
-    "onCommand:pronounciation.openSettings"
+    "onCommand:pronounciation.openSettings",
+    "onCommand:pronounciation.manageTtsConnections",
+    "onCommand:pronounciation.chooseTtsConnection",
+    "onCommand:pronounciation.setApiKey",
+    "onCommand:pronounciation.removeApiKey",
+    "onCommand:pronounciation.testTtsConnection"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -84,7 +107,7 @@
       },
       {
         "command": "pronounciation.setVoice",
-        "title": "Pronunciation: Choose Installed Voice"
+        "title": "Pronunciation: Choose Voice"
       },
       {
         "command": "pronounciation.previewVoice",
@@ -109,6 +132,26 @@
       {
         "command": "pronounciation.openSettings",
         "title": "Pronunciation: Open Settings"
+      },
+      {
+        "command": "pronounciation.manageTtsConnections",
+        "title": "Pronunciation: Manage TTS Connections"
+      },
+      {
+        "command": "pronounciation.chooseTtsConnection",
+        "title": "Pronunciation: Choose TTS Connection"
+      },
+      {
+        "command": "pronounciation.setApiKey",
+        "title": "Pronunciation: Set API Key"
+      },
+      {
+        "command": "pronounciation.removeApiKey",
+        "title": "Pronunciation: Remove API Key"
+      },
+      {
+        "command": "pronounciation.testTtsConnection",
+        "title": "Pronunciation: Test Connection"
       }
     ],
     "keybindings": [
@@ -208,6 +251,67 @@
             "type": "string"
           },
           "description": "Literal, case-sensitive whole-word pronunciation replacements, for example {\"SQL\": \"sequel\"}. Applied once before identifier splitting."
+        },
+        "pronounciation.tts.activeProfile": {
+          "type": "string",
+          "default": "local",
+          "scope": "machine",
+          "description": "TTS connection ID for the next read or replay. local uses offline system speech."
+        },
+        "pronounciation.tts.profiles": {
+          "type": "array",
+          "default": [],
+          "scope": "machine",
+          "description": "Saved TTS connections. Manage these with Manage TTS Connections. API keys are stored separately in encrypted SecretStorage.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "provider",
+              "model",
+              "voice",
+              "speed"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "openai",
+                  "elevenlabs",
+                  "custom"
+                ]
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "voice": {
+                "type": "string",
+                "minLength": 1
+              },
+              "speed": {
+                "type": "number",
+                "default": 1,
+                "minimum": 0.25,
+                "maximum": 3,
+                "description": "ElevenLabs uses 0.7–1.2. Other connections use 0.25–3."
+              },
+              "endpoint": {
+                "type": "string",
+                "description": "Complete custom speech URL. HTTPS, or HTTP on localhost. Requires OpenAI-compatible requests and WAV responses."
+              }
+            }
+          }
         }
       }
     }
@@ -219,7 +323,8 @@
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/** --test-coverage-include=extension.js --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 test/*.test.js",
     "check": "npm run lint && npm run test:coverage",
     "package": "node scripts/package.js",
-    "verify:package": "node scripts/verify-vsix.js artifacts/pronunciation.vsix"
+    "verify:package": "node scripts/verify-vsix.js artifacts/pronunciation.vsix",
+    "test:audio": "node scripts/smoke-audio.js"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
