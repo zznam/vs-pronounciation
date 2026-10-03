@@ -217,10 +217,14 @@
     "test": "node --test test/*.test.js",
     "test:integration": "node test/integration/run.js",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/** --test-coverage-include=extension.js --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 test/*.test.js",
-    "check": "npm run lint && npm run test:coverage"
+    "check": "npm run lint && npm run test:coverage",
+    "package": "node scripts/package.js",
+    "verify:package": "node scripts/verify-vsix.js artifacts/pronunciation.vsix"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.11.0"
+    "@vscode/vsce": "4.0.0",
+    "eslint": "^10.11.0",
+    "yauzl": "3.4.0"
   }
 }

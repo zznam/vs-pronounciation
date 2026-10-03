@@ -64,7 +64,7 @@ The existing `pronounciation.*` command and setting prefix is intentionally pres
 
 The extension runs beside the desktop UI, so speech uses your local computer in Remote SSH, WSL, and container workspaces. Install it locally. Browser-only VS Code is not supported.
 
-If playback fails, the extension reports an error. For a missing engine, follow the setup guidance in the notification. For an unavailable voice, clear the voice setting and retry with the default. Check your system audio output if playback completes but is inaudible.
+If playback fails, the extension reports an error with an **Open Settings** action to adjust the voice and speed. For a missing engine, follow the setup guidance in the notification. For an unavailable voice, clear the voice setting and retry with the default. Check your system audio output if playback completes but is inaudible.
 
 ## Development and tests
 
@@ -97,8 +97,10 @@ This test opens a temporary VS Code profile, verifies activation and commands, a
 
 ```sh
 npm run check
-npx @vscode/vsce package
+npm run package
 ```
+
+The package command uses the pinned VSCE development dependency, writes `artifacts/pronunciation.vsix`, and verifies that its manifest matches the source, every runtime module and license is present, and tests, development tools, environment files, and dependencies are excluded. CI builds this archive and retains it as an artifact without publishing to the Marketplace. Dependency and GitHub Actions update PRs are scheduled weekly with Dependabot.
 
 Install the generated `.vsix` using **Extensions: Install from VSIX**. Publishing requires configuring a Marketplace publisher; no publisher account is assumed here.
 

@@ -24,7 +24,11 @@ function registerExtension(vscode, context, backend, discoverVoices) {
         if (speaking) status.show();
         else status.hide();
         void vscode.commands.executeCommand('setContext', 'pronounciation.speaking', speaking);
-    }, error => { void vscode.window.showErrorMessage(`Pronunciation: ${error.message}`); });
+    }, error => {
+        void Promise.resolve(vscode.window.showErrorMessage(`Pronunciation: ${error.message}`, 'Open Settings')).then(action => {
+            if (action === 'Open Settings' && !disposed) return vscode.commands.executeCommand('workbench.action.openSettings', 'pronounciation');
+        }).catch(() => {});
+    });
     void vscode.commands.executeCommand('setContext', 'pronounciation.speaking', false);
     const voiceControls = createVoiceControls(vscode, (text, options) => playback.speak(text, options), discoverVoices);
 

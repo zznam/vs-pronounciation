@@ -6,3 +6,6 @@ coverage/**
 eslint.config.js
 ROADMAP.md
 .nvmrc
+scripts/**
+artifacts/**
+.gitignore
