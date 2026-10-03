@@ -1,6 +1,6 @@
 # Improvement brainstorm and delivery plan
 
-Planning date: 2026-10-03. These 34 ideas build on the existing offline speech engine, replay, and Stop controls. A, B, and C identify separate pull requests targeting `main`; features become available when their PR merges. Backlog items are ideas only. No cloud service, credential, persistent speech history, or Marketplace publication is included in these batches.
+Planning date: 2026-10-03. These 34 ideas build on the existing offline speech engine, replay, and Stop controls. A, B, and C identify [reading PR #2](https://github.com/zznam/vs-pronounciation/pull/2), [voice PR #3](https://github.com/zznam/vs-pronounciation/pull/3), and [reliability PR #4](https://github.com/zznam/vs-pronounciation/pull/4), all targeting `main`; features become available when their PR merges. Backlog items are ideas only. No cloud service, credential, persistent speech history, or Marketplace publication is included in these batches.
 
 | # | Feature or improvement | Benefit and acceptance criteria | Priority | Effort | Delivery |
 | --- | --- | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ Planning date: 2026-10-03. These 34 ideas build on the existing offline speech e
 | 21 | Open extension settings | Direct command opens Pronunciation-filtered Settings. | Medium | S | B |
 | 22 | Signal-exit failure detection | A process killed externally must not appear to finish successfully. | High | S | C: Reliability |
 | 23 | Festival stdout error detection | Detect Scheme errors even when the process exits with code zero. | High | M | C |
-| 24 | Locale-safe Windows JSON and speech | Explicit UTF-8 output and invariant numeric interpretation. | High | S | C |
+| 24 | Speech error recovery action | Open filtered voice/speed settings from an error; dismissal and deactivation make no changes. | High | S | C |
 | 25 | Package validation in CI | Produce a VSIX and verify required runtime files and excluded test files. | High | M | C |
 | 26 | Maintenance automation | Reviewable dependency updates and reusable bug/feature issue forms. | Medium | S | C |
 | 27 | Sentence stepping | Previous/next sentence with abbreviation, decimal, and non-Latin punctuation handling. | High | M | Backlog |
