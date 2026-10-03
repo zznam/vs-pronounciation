@@ -1,0 +1,8 @@
+.github/**
+.vscode/**
+.vscode-test/**
+test/**
+coverage/**
+eslint.config.js
+ROADMAP.md
+.nvmrc
