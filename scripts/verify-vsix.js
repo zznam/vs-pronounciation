@@ -41,6 +41,7 @@ async function verifyVsix(file, root = path.resolve(__dirname, '..')) {
     for (const name of required) assert.ok(names.has(`extension/${name}`), `Missing runtime or license file: ${name}`);
     assert.ok(names.has('extension/readme.md') || names.has('extension/README.md'), 'Missing README');
     assert.ok(names.has(`extension/${source.main.replace(/^\.\//, '')}`), 'Missing declared extension entry point');
+    if (source.icon) assert.ok(names.has(`extension/${source.icon}`), 'Missing declared Marketplace icon');
     for (const name of names) {
         assert.ok(!/^extension\/(?:test|scripts|node_modules|coverage|artifacts|\.git|\.github|\.vscode)(?:\/|$)/.test(name), `Development file leaked into package: ${name}`);
         assert.ok(!/(?:^|\/)\.env(?:\.|$)/.test(name), `Environment file leaked into package: ${name}`);

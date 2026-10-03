@@ -1,5 +1,7 @@
 # Pronunciation
 
+<img src="assets/icon.png" width="96" height="96" alt="Pronunciation speech bubble and waveform logo">
+
 Read selected text or the word at your cursor aloud in desktop VS Code. Use offline system voices or connect OpenAI, ElevenLabs, or a custom OpenAI-compatible TTS API. Includes voice and speed settings, replay, and a Stop control. Local speech is the default and requires no account. There are no runtime npm dependencies.
 
 ## Read, replay, and stop

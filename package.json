@@ -1,9 +1,18 @@
 {
   "name": "pronounciation",
   "displayName": "Pronunciation",
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#0566ed",
+    "theme": "dark"
+  },
   "description": "Read text aloud with local voices or configurable TTS APIs, adjustable speed, and replay.",
   "version": "0.0.2",
   "repository": "https://github.com/zznam/vs-pronounciation.git",
+  "homepage": "https://github.com/zznam/vs-pronounciation#readme",
+  "bugs": {
+    "url": "https://github.com/zznam/vs-pronounciation/issues"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.75.0",
@@ -14,6 +23,15 @@
   ],
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "text to speech",
+    "tts",
+    "pronunciation",
+    "read aloud",
+    "accessibility",
+    "openai",
+    "elevenlabs"
   ],
   "activationEvents": [
     "onCommand:pronounciation.pronounce",

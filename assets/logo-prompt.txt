@@ -1,0 +1,7 @@
+Use case: logo-brand
+Asset type: square PNG logo for the Pronunciation VS Code extension, readable as a small Marketplace icon.
+Primary request: create a polished, distinctive emblem for reading written text aloud. A single clean speech bubble encloses a simple rhythmic audio waveform; the bubble's tail makes the mark feel like speaking. Bold geometric curves, balanced negative space, flat vector-like visual design, friendly and precise.
+Composition/framing: one centered emblem filling about 70 percent of the square; generous uniform margin. Render the complete square as an opaque icon tile. High contrast between the emblem and its background, restrained contemporary color treatment suitable for light and dark editor themes.
+Constraints: no text, no letters, no microphone, no vendor logos, no extra objects, no watermark, no 3D mockup, no shadows, no fine detail. Produce one finished logo, not a sheet of alternatives.
+
+Generated using the built-in image generation tool. logo.png is the original artwork; icon.png is its 256 by 256 pixel Marketplace export.

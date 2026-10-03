@@ -9,3 +9,6 @@ ROADMAP.md
 scripts/**
 artifacts/**
 .gitignore
+assets/logo.png
+assets/logo-prompt.txt
+**/.DS_Store
