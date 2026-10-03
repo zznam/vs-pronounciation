@@ -9,12 +9,21 @@
     "vscode": "^1.75.0",
     "node": ">=22.13.0"
   },
-  "extensionKind": ["ui"],
+  "extensionKind": [
+    "ui"
+  ],
   "categories": [
     "Other"
   ],
   "activationEvents": [
     "onCommand:pronounciation.pronounce",
+    "onCommand:pronounciation.readLine",
+    "onCommand:pronounciation.readParagraph",
+    "onCommand:pronounciation.readDocument",
+    "onCommand:pronounciation.readAllSelections",
+    "onCommand:pronounciation.readInput",
+    "onCommand:pronounciation.readClipboard",
+    "onCommand:pronounciation.clearReplay",
     "onCommand:pronounciation.stop",
     "onCommand:pronounciation.repeat",
     "onCommand:pronounciation.setSpeed"
@@ -25,6 +34,34 @@
       {
         "command": "pronounciation.pronounce",
         "title": "Pronunciation: Read Selection or Word"
+      },
+      {
+        "command": "pronounciation.readLine",
+        "title": "Pronunciation: Read Current Line"
+      },
+      {
+        "command": "pronounciation.readParagraph",
+        "title": "Pronunciation: Read Current Paragraph"
+      },
+      {
+        "command": "pronounciation.readDocument",
+        "title": "Pronunciation: Read Entire Document"
+      },
+      {
+        "command": "pronounciation.readAllSelections",
+        "title": "Pronunciation: Read All Selections"
+      },
+      {
+        "command": "pronounciation.readInput",
+        "title": "Pronunciation: Read Typed Text"
+      },
+      {
+        "command": "pronounciation.readClipboard",
+        "title": "Pronunciation: Read Clipboard"
+      },
+      {
+        "command": "pronounciation.clearReplay",
+        "title": "Pronunciation: Clear Replay Text"
       },
       {
         "command": "pronounciation.stop",
@@ -66,6 +103,19 @@
           "group": "9_cutcopypaste@100"
         },
         {
+          "command": "pronounciation.readAllSelections",
+          "when": "editorHasMultipleSelections",
+          "group": "9_cutcopypaste@100"
+        },
+        {
+          "command": "pronounciation.readLine",
+          "group": "9_cutcopypaste@100"
+        },
+        {
+          "command": "pronounciation.readParagraph",
+          "group": "9_cutcopypaste@100"
+        },
+        {
           "command": "pronounciation.stop",
           "when": "pronounciation.speaking",
           "group": "9_cutcopypaste@101"
@@ -94,6 +144,35 @@
           "default": true,
           "scope": "window",
           "description": "Read the word at the cursor when no text is selected."
+        },
+        "pronounciation.maxTextLength": {
+          "type": "integer",
+          "default": 50000,
+          "minimum": 1,
+          "maximum": 50000,
+          "scope": "window",
+          "description": "Maximum characters in a requested or prepared passage. Lower this to prevent accidental long playback."
+        },
+        "pronounciation.speakCodeIdentifiers": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Split camelCase, acronym boundaries, and snake_case before reading. URLs and paths are preserved."
+        },
+        "pronounciation.normalizeWhitespace": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Collapse line breaks and repeated whitespace before speaking."
+        },
+        "pronounciation.replacements": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Literal, case-sensitive whole-word pronunciation replacements, for example {\"SQL\": \"sequel\"}. Applied once before identifier splitting."
         }
       }
     }

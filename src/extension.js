@@ -1,6 +1,5 @@
 const { Playback } = require('./playback');
-
-const MAX_TEXT_LENGTH = 50000;
+const { MAX_TEXT_LENGTH, prepareText, getLine, getParagraph, getSelections } = require('./text');
 
 function getText(editor, readWordAtCursor) {
     if (!editor.selection.isEmpty) return editor.document.getText(editor.selection).trim();
@@ -13,6 +12,7 @@ function getText(editor, readWordAtCursor) {
 function registerExtension(vscode, context, backend) {
     let lastText = '';
     let disposed = false;
+    let inputRequest = 0;
     const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     status.name = 'Pronunciation playback';
     status.text = '$(primitive-square) Stop pronunciation';
@@ -26,26 +26,61 @@ function registerExtension(vscode, context, backend) {
     }, error => { void vscode.window.showErrorMessage(`Pronunciation: ${error.message}`); });
     void vscode.commands.executeCommand('setContext', 'pronounciation.speaking', false);
 
-    function speak(text) {
-        const config = vscode.workspace.getConfiguration('pronounciation');
+    function speak(text, document) {
+        const config = vscode.workspace.getConfiguration('pronounciation', document);
         lastText = text;
         return playback.speak(text, { voice: config.get('voice', ''), speed: config.get('speed', 1) });
+    }
+
+    function read(text, document) {
+        if (disposed) return;
+        ++inputRequest;
+        try {
+            const prepared = prepareText(text, vscode.workspace.getConfiguration('pronounciation', document));
+            if (!prepared) return vscode.window.showInformationMessage('Select some text or place the cursor on a word.');
+            return speak(prepared, document);
+        } catch (error) {
+            return vscode.window.showInformationMessage(error.message);
+        }
+    }
+
+    function readEditor(extract) {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return vscode.window.showInformationMessage('Open an editor to pronounce text.');
+        return read(extract(editor), editor.document);
     }
 
     const commands = {
         pronounce() {
             const editor = vscode.window.activeTextEditor;
             if (!editor) return vscode.window.showInformationMessage('Open an editor to pronounce text.');
-            const config = vscode.workspace.getConfiguration('pronounciation');
+            const config = vscode.workspace.getConfiguration('pronounciation', editor.document);
             const text = getText(editor, config.get('readWordAtCursor', true));
-            if (!text) return vscode.window.showInformationMessage('Select some text or place the cursor on a word.');
-            if (text.length > MAX_TEXT_LENGTH) {
-                return vscode.window.showInformationMessage('Select a shorter passage (up to 50,000 characters).');
-            }
-            return speak(text);
+            return read(text, editor.document);
         },
-        stop() { return playback.stop(); },
+        readLine() { return readEditor(getLine); },
+        readParagraph() { return readEditor(getParagraph); },
+        readDocument() { return readEditor(editor => editor.document.getText()); },
+        readAllSelections() { return readEditor(editor => getSelections(editor, (start, end) => new vscode.Range(start, end))); },
+        async readInput() {
+            const request = ++inputRequest;
+            const text = await vscode.window.showInputBox({ title: 'Pronunciation: Read Typed Text', prompt: 'Enter a word or passage to read aloud using your local speech engine.' });
+            if (text !== undefined && request === inputRequest) return read(text);
+        },
+        async readClipboard() {
+            const request = ++inputRequest;
+            try {
+                const text = await vscode.env.clipboard.readText();
+                if (request === inputRequest) return read(text);
+            } catch (error) { if (!disposed && request === inputRequest) return vscode.window.showErrorMessage(`Could not read clipboard: ${error.message}`); }
+        },
+        clearReplay() {
+            lastText = '';
+            void vscode.window.showInformationMessage('Pronunciation replay text cleared.');
+        },
+        stop() { ++inputRequest; return playback.stop(); },
         repeat() {
+            ++inputRequest;
             if (!lastText) return vscode.window.showInformationMessage('Pronounce some text first, then replay it here.');
             return speak(lastText);
         },

@@ -62,6 +62,23 @@ function fakeEditor(text, { empty = false, word = 'cursor-word' } = {}) {
     };
 }
 
+function documentEditor(content, line = 0) {
+    const lines = content.split('\n');
+    const offsetAt = position => lines.slice(0, position.line).reduce((total, text) => total + text.length + 1, 0) + position.character;
+    const positionAt = offset => {
+        let index = 0;
+        while (index < lines.length - 1 && offset > lines[index].length) offset -= lines[index++].length + 1;
+        return { line: index, character: offset };
+    };
+    return {
+        selection: { active: { line } }, selections: [],
+        document: {
+            lineCount: lines.length, lineAt: index => ({ text: lines[index] }), offsetAt, positionAt,
+            getText: range => range ? content.slice(offsetAt(range.start), offsetAt(range.end)) : content
+        }
+    };
+}
+
 function fakeVscode() {
     const handlers = new Map();
     const info = [], errors = [], updates = [], contexts = [];
@@ -77,6 +94,7 @@ function fakeVscode() {
         async update(key, value, target) { settings[key] = value; updates.push({ key, value, target }); }
     };
     const vscode = {
+        Range: class { constructor(start, end) { this.start = start; this.end = end; } },
         StatusBarAlignment: { Right: 2 }, ConfigurationTarget: { Global: 1 },
         commands: {
             registerCommand(name, handler) {
@@ -90,11 +108,13 @@ function fakeVscode() {
             createStatusBarItem: () => status,
             showInformationMessage: message => { info.push(message); },
             showErrorMessage: message => { errors.push(message); },
+            showInputBox: async () => undefined,
             showQuickPick: async () => undefined
         },
+        env: { clipboard: { readText: async () => '' } },
         workspace: { getConfiguration: () => config }
     };
     return { vscode, handlers, info, errors, updates, contexts, settings, status, config };
 }
 
-module.exports = { tick, deferred, fakeBackend, fakeChild, fakeEditor, fakeVscode };
+module.exports = { tick, deferred, fakeBackend, fakeChild, fakeEditor, fakeVscode, documentEditor };
