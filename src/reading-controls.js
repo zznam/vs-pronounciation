@@ -43,6 +43,7 @@ function createReadingControls(vscode, session, { claim, isCurrent, clearAudio }
                 }
             },
             playSession() { return withSession(() => session.play()); },
+            practiceSession() { return withSession(() => session.practice()); },
             previousSentence() { return withSession(() => session.move(-1)); },
             nextSentence() { return withSession(() => session.move(1)); },
             async chooseSentence() {
