@@ -1,3 +1,48 @@
+# Improvement brainstorm and delivery plan
+
+Planning date: 2026-10-03. These 34 ideas build on the existing offline speech engine, replay, and Stop controls. A, B, and C identify [reading PR #2](https://github.com/zznam/vs-pronounciation/pull/2), [voice PR #3](https://github.com/zznam/vs-pronounciation/pull/3), and [reliability PR #4](https://github.com/zznam/vs-pronounciation/pull/4), all targeting `main`; features become available when their PR merges. Backlog items are ideas only. No cloud service, credential, persistent speech history, or Marketplace publication is included in these batches.
+
+| # | Feature or improvement | Benefit and acceptance criteria | Priority | Effort | Delivery |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Read current line | Speak the cursor line without manual selection; blank lines give guidance. | High | S | A: Reading |
+| 2 | Read current paragraph | Use surrounding blank-line boundaries, including the start and end of a file. | High | S | A |
+| 3 | Explicit whole-document reading | Separate command, subject to the same passage limit. | Medium | S | A |
+| 4 | Read all selections | Sort by document position, merge overlaps, skip empty ranges. | High | M | A |
+| 5 | Read typed text | Practice a word without opening or modifying a file. Cancellation retains replay. | High | S | A |
+| 6 | Read clipboard | Access clipboard only on invocation; handle empty content and access errors. | Medium | S | A |
+| 7 | Speak code identifiers | Opt-in camelCase, acronym, and snake_case splitting; preserve URLs and paths. | High | S | A |
+| 8 | Normalize whitespace | Opt-in collapse of repeated whitespace and line breaks. | Medium | S | A |
+| 9 | Pronunciation replacements | Literal, case-sensitive Unicode whole-word replacements, applied once. | High | M | A |
+| 10 | Adjustable passage limit | Validate both input and replacement expansion; never truncate silently. | High | S | A |
+| 11 | Clear replay memory | Explicit privacy control without stopping current playback. | High | S | A |
+| 12 | Resource-scoped preparation | Respect per-folder text preparation settings for the originating editor. | Medium | S | A |
+| 13 | Installed voice picker | Discover actual voices on each supported desktop OS. | High | M | B: Voices |
+| 14 | Voice language labels | Show native locale labels where available; do not infer unsupported metadata. | High | S | B |
+| 15 | Restore system default voice | Explicit picker entry removes a stale configured voice. | High | S | B |
+| 16 | Preview a voice | Fixed sample through normal playback; preview does not replace replay memory. | High | M | B |
+| 17 | Custom speaking speed | Validated numeric input across 0.25–3; cancellation makes no changes. | Medium | S | B |
+| 18 | Faster/slower commands | Bounded 0.25 increments without reopening Settings. | Medium | S | B |
+| 19 | Reset speed | Return to normal speed in one command. | Medium | S | B |
+| 20 | Full-range speed presets | Include slowest and fastest supported rates and show the active rate. | Medium | S | B |
+| 21 | Open extension settings | Direct command opens Pronunciation-filtered Settings. | Medium | S | B |
+| 22 | Signal-exit failure detection | A process killed externally must not appear to finish successfully. | High | S | C: Reliability |
+| 23 | Festival stdout error detection | Detect Scheme errors even when the process exits with code zero. | High | M | C |
+| 24 | Speech error recovery action | Open filtered voice/speed settings from an error; dismissal and deactivation make no changes. | High | S | C |
+| 25 | Package validation in CI | Produce a VSIX and verify required runtime files and excluded test files. | High | M | C |
+| 26 | Maintenance automation | Reviewable dependency updates and reusable bug/feature issue forms. | Medium | S | C |
+| 27 | Sentence stepping | Previous/next sentence with abbreviation, decimal, and non-Latin punctuation handling. | High | M | Backlog |
+| 28 | Bounded practice loops | Repeat 2–5 times with cancellable gaps; no unlimited default loop. | High | M | Backlog |
+| 29 | Audio export | Native save dialog, supported formats, cancellation, and partial-file cleanup. | Medium | M | Backlog |
+| 30 | Explicit vocabulary bookmarks | Opt-in storage with limits and remove/export/clear controls. | Medium | M | Backlog |
+| 31 | Dictionary definitions and IPA | Licensed source, language and provenance, explicit opt-in networking. | Medium | L | Backlog |
+| 32 | True pause/resume and highlighting | Requires reliable native progress/timing; never label restart as resume. | Medium | L | Backlog |
+| 33 | Native Windows/Linux audio smoke tests | Generate actual audio and verify cancellation and Unicode on those engines. | High | M | Backlog |
+| 34 | Minimum-host and Remote SSH/WSL checks | Validate declared VS Code minimum and local extension placement. | High | M | Backlog |
+
+Keep the existing `pronounciation.*` IDs and shortcuts for compatibility. New speech inputs use the same cancellation coordinator and local backend. Unit tests validate boundaries and request ordering; native audio tests are required before claiming full platform verification.
+
+---
+
 # Extension review and feature priorities
 
 Review date: 2026-10-02. Baseline: repository commit `5a34d49`, extension version `0.0.2`.

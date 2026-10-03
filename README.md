@@ -4,7 +4,7 @@ Read selected text or the word at your cursor aloud in desktop VS Code. Uses you
 
 ## Read, replay, and stop
 
-Select a word, sentence, or passage, then right-click and choose **Pronunciation: Read Selection or Word**. With no selection, the same command reads the word at your cursor. It never falls back to reading the entire document. For multiple selections, only the primary selection is read.
+Select a word, sentence, or passage, then right-click and choose **Pronunciation: Read Selection or Word**. With no selection, the same command reads the word at your cursor. It never falls back to reading the entire document. For multiple selections, the default command reads the primary selection. Use **Read All Selections** to read all nonempty selections in document order; overlapping selections are merged. Line-break pauses depend on the installed voice.
 
 | Command | macOS | Windows / Linux |
 | --- | --- | --- |
@@ -16,6 +16,23 @@ Select a word, sentence, or passage, then right-click and choose **Pronunciation
 While speech is playing, click **Stop pronunciation** in the status bar or use Stop from the editor context menu. A new request stops the previous one before starting. Stopping also cancels any pending replacement. Closing or disabling the extension stops playback.
 
 Replay uses the last requested passage with your **current** voice and speed, even after switching editors. Only that passage is retained in memory; it is cleared when the extension deactivates. The extension does not write selected text to disk or send it to a cloud service. Passages are limited to 50,000 characters to keep accidental large selections manageable.
+
+## More reading options
+
+Use the Command Palette for **Read Current Line**, **Read Current Paragraph** (bounded by blank lines), **Read Entire Document**, **Read All Selections**, **Read Typed Text**, and **Read Clipboard**. The document command is explicit; ordinary cursor reading still never reads the entire file. Clipboard access happens only when you invoke its command. Typed and clipboard text work without an editor. **Clear Replay Text** removes the in-memory passage without interrupting current playback.
+
+Optional settings can split code identifiers (`getHTTPResponse` becomes `get HTTP Response`), collapse repeated whitespace, and replace whole words such as `SQL` with `sequel`. Replacements are case-sensitive, literal, and applied once before identifier splitting. Replay retains the prepared passage, so replacements cannot compound on each replay. Text preparation settings use the originating document’s resource scope.
+
+```json
+{
+  "pronounciation.speakCodeIdentifiers": true,
+  "pronounciation.normalizeWhitespace": true,
+  "pronounciation.replacements": { "SQL": "sequel" },
+  "pronounciation.maxTextLength": 5000
+}
+```
+
+The passage limit applies before and after preparation. Its default is 50,000 characters and can be lowered to any positive integer. Oversized text is rejected with guidance and never silently truncated.
 
 ## Settings
 

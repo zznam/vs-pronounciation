@@ -29,8 +29,8 @@ async function run() {
         };
         await extension.activate();
         const commands = await vscode.commands.getCommands(true);
-        for (const name of ['pronounce', 'stop', 'repeat', 'setSpeed']) {
-            assert.ok(commands.includes(`pronounciation.${name}`));
+        for (const { command } of require('../../package.json').contributes.commands) {
+            assert.ok(commands.includes(command));
         }
         await vscode.commands.executeCommand('pronounciation.stop');
         assert.equal(vscode.workspace.getConfiguration('pronounciation').get('speed'), 1);
@@ -42,7 +42,13 @@ async function run() {
             editor.selection = new vscode.Selection(1, 2, 1, 2);
             await vscode.commands.executeCommand('pronounciation.repeat');
             await vscode.commands.executeCommand('pronounciation.pronounce');
-            assert.deepEqual(recordings.map(recording => recording.text), ['Hello', 'Hello', 'Goodbye']);
+            await vscode.commands.executeCommand('pronounciation.readLine');
+            await vscode.commands.executeCommand('pronounciation.readParagraph');
+            await vscode.commands.executeCommand('pronounciation.readDocument');
+            editor.selections = [new vscode.Selection(1, 0, 1, 7), new vscode.Selection(0, 0, 0, 5)];
+            await vscode.commands.executeCommand('pronounciation.readAllSelections');
+            await vscode.commands.executeCommand('pronounciation.clearReplay');
+            assert.deepEqual(recordings.map(recording => recording.text), ['Hello', 'Hello', 'Goodbye', 'Goodbye world.', 'Hello world.\nGoodbye world.', 'Hello world.\nGoodbye world.', 'Hello\nGoodbye']);
             for (const recording of recordings) {
                 const audio = await fs.readFile(recording.file);
                 assert.equal(audio.subarray(0, 4).toString(), 'FORM');
