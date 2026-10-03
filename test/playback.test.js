@@ -127,3 +127,30 @@ test('deactivation suppresses late stop failures', async () => {
     await run;
     assert.deepEqual(h.errors, []);
 });
+
+
+test('playback outcomes distinguish normal completion, queued cancellation, and failure', async () => {
+    const h = setup();
+    const completed = h.playback.speak('complete'); await tick();
+    h.backend.calls[0].finish(); assert.equal((await completed).status, 'completed');
+    const cancelled = h.playback.speak('cancel'); await h.playback.stop();
+    assert.equal((await cancelled).status, 'cancelled');
+    const failure = new Error('failed');
+    const failed = h.playback.speak('failure'); await tick();
+    h.backend.calls[1].fail(failure);
+    assert.deepEqual(await failed, { status: 'failed', error: failure });
+});
+
+test('a superseded Stop failure is silent and cannot supply a recovery action for newer playback', async () => {
+    const h = setup();
+    const first = h.playback.speak('first'); await tick();
+    let reject;
+    h.backend.calls[0].stop = () => new Promise((resolve, no) => { reject = no; });
+    const stop = h.playback.stop();
+    const failure = reject;
+    h.backend.calls[0].stop = async () => h.backend.calls[0].finish();
+    const second = h.playback.speak('second'); await tick();
+    failure(new Error('obsolete failure')); assert.equal((await stop).status, 'cancelled');
+    assert.deepEqual(h.errors, []);
+    h.backend.calls[1].finish(); await Promise.all([first, second]);
+});

@@ -77,3 +77,71 @@ test('ElevenLabs controls clamp profile speed, and malformed active settings rep
     await h.run('setSpeed'); assert.equal(h.settings['tts.profiles'][0].speed, 1.2);
     h.settings['tts.activeProfile'] = 'missing'; await h.run('setVoice'); assert.match(h.errors[0], /missing/);
 });
+
+
+test('guided API sessions freeze connection options, advance sentence by sentence, and replay cached audio', async t => {
+    const h = await setup(t);
+    h.settings['reading.mode'] = 'continuous';
+    h.vscode.window.showInputBox = async () => 'Dr. Smith is here. Xin chào! 你好。こんにちは。';
+    await h.run('startInputSession');
+    const original = h.providers.synthesize;
+    h.providers.synthesize = async (...args) => {
+        h.settings['tts.profiles'][0].voice = 'cedar';
+        return original(...args);
+    };
+    await h.run('playSession');
+    assert.deepEqual(h.syntheses.map(call => call[1]), ['Dr. Smith is here.', 'Xin chào!', '你好。', 'こんにちは。']);
+    assert.ok(h.syntheses.every(call => call[0].voice === 'marin'));
+    assert.equal(h.extension.session.state.index, 3);
+    assert.equal(h.extension.session.state.phase, 'completed');
+    assert.match(h.status.text, /Sentence 4\/4.*Playing/);
+    await h.run('playSession');
+    assert.equal(h.syntheses.length, 5, 'Changed voice takes effect on the next run');
+    assert.equal(h.syntheses[4][0].voice, 'cedar');
+    await h.run('playSession'); assert.equal(h.syntheses.length, 5, 'Matching last sentence reuses cached audio');
+    await h.run('clearSession'); assert.deepEqual(await fs.readdir(h.root), []);
+});
+
+test('Stop during session generation aborts the provider and prevents later sentences or audio', async t => {
+    const h = await setup(t);
+    h.settings['reading.mode'] = 'continuous';
+    h.vscode.window.showInputBox = async () => 'First sentence. Second sentence.';
+    await h.run('startInputSession');
+    const generated = deferred(); let signal;
+    h.providers.synthesize = (profile, text, key, abortSignal) => { signal = abortSignal; return generated.promise; };
+    const run = h.run('playSession'); await until(() => signal);
+    const stop = h.run('stop'); assert.equal(signal.aborted, true);
+    generated.resolve(wav()); await Promise.all([run, stop]);
+    assert.equal(h.extension.session.state.phase, 'stopped');
+    assert.equal(h.extension.session.state.index, 0);
+    assert.equal(h.plays.length, 0); assert.deepEqual(await fs.readdir(h.root), []);
+});
+
+test('Stop during guided API playback stops the player once and prevents the next sentence', async t => {
+    const h = await setup(t);
+    h.settings['reading.mode'] = 'continuous';
+    h.vscode.window.showInputBox = async () => 'First sentence. Second sentence.';
+    await h.run('startInputSession');
+    const played = deferred(); let active = false, stops = 0;
+    h.player.play = () => { active = true; return { done: played.promise, async stop() { stops++; played.resolve(); } }; };
+    const run = h.run('playSession'); await until(() => active);
+    await h.run('stop'); await run;
+    assert.equal(stops, 1); assert.equal(h.syntheses.length, 1);
+    assert.equal(h.extension.session.state.index, 0);
+    assert.equal(h.extension.session.state.phase, 'stopped');
+});
+
+test('session cloud recovery reads the failed sentence locally without advancing or changing the connection', async t => {
+    const h = await setup(t);
+    h.settings['reading.mode'] = 'continuous';
+    h.vscode.window.showInputBox = async () => 'First sentence. Second sentence.';
+    await h.run('startInputSession');
+    h.providers.synthesize = async () => { throw new Error('offline'); };
+    h.vscode.window.showErrorMessage = async () => 'Read locally';
+    await h.run('playSession'); await until(() => h.local.calls.length > 0);
+    assert.equal(h.local.calls[0].text, 'First sentence.');
+    h.local.calls[0].finish(); await tick();
+    assert.equal(h.extension.session.state.index, 0);
+    assert.equal(h.local.calls.length, 1);
+    assert.equal(h.settings['tts.activeProfile'], 'test-connection');
+});

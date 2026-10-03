@@ -9,6 +9,10 @@ async function main() {
     const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'pronunciation-vscode-'));
     const root = path.resolve(__dirname, '../..');
     try {
+        // Keep compatibility runs on the requested host version, in an isolated profile.
+        const settings = path.join(temp, 'user', 'User', 'settings.json');
+        await fs.mkdir(path.dirname(settings), { recursive: true });
+        await fs.writeFile(settings, JSON.stringify({ 'update.mode': 'none', 'extensions.autoUpdate': false, 'extensions.autoCheckUpdates': false }));
         const env = { ...process.env };
         delete env.ELECTRON_RUN_AS_NODE;
         const child = spawn(executable, [

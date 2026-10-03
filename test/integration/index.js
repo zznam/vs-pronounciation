@@ -52,6 +52,18 @@ async function run() {
             await vscode.commands.executeCommand('pronounciation.readAllSelections');
             await vscode.commands.executeCommand('pronounciation.clearReplay');
             assert.deepEqual(recordings.map(recording => recording.text), ['Hello', 'Hello', 'Goodbye', 'Goodbye world.', 'Hello world.\nGoodbye world.', 'Hello world.\nGoodbye world.', 'Hello\nGoodbye']);
+            const sessionDocument = await vscode.workspace.openTextDocument({ content: 'Dr. Smith is here. Another sentence.', language: 'plaintext' });
+            const sessionEditor = await vscode.window.showTextDocument(sessionDocument);
+            sessionEditor.selection = new vscode.Selection(0, 0, 0, sessionDocument.getText().length);
+            await vscode.commands.executeCommand('pronounciation.startSession');
+            // Edits after loading must not change the immutable spoken snapshot.
+            await sessionEditor.edit(edit => edit.replace(sessionEditor.selection, 'Edited document.'));
+            const sessionStart = recordings.length;
+            await vscode.commands.executeCommand('pronounciation.playSession');
+            await vscode.commands.executeCommand('pronounciation.nextSentence');
+            await vscode.commands.executeCommand('pronounciation.previousSentence');
+            assert.deepEqual(recordings.slice(sessionStart).map(recording => recording.text), ['Dr. Smith is here.', 'Another sentence.', 'Dr. Smith is here.']);
+            await vscode.commands.executeCommand('pronounciation.clearSession');
             for (const recording of recordings) {
                 const audio = await fs.readFile(recording.file);
                 assert.equal(audio.subarray(0, 4).toString(), 'FORM');
@@ -87,8 +99,26 @@ async function run() {
         await vscode.commands.executeCommand('pronounciation.clearReplay');
         await vscode.commands.executeCommand('pronounciation.pronounce');
         assert.equal(apiTexts.length, 4, 'Clearing replay must discard cached audio');
+        const sessionText = 'Dr. Smith is here. Xin chào! 你好。こんにちは。';
+        const sessionDocument = await vscode.workspace.openTextDocument({ content: sessionText, language: 'plaintext' });
+        await vscode.window.showTextDocument(sessionDocument);
+        await config.update('reading.mode', 'continuous', vscode.ConfigurationTarget.Global);
+        await config.update('reading.locale', 'en', vscode.ConfigurationTarget.Global);
+        await vscode.commands.executeCommand('pronounciation.startDocumentSession');
+        const sessionStart = apiTexts.length;
+        await vscode.commands.executeCommand('pronounciation.playSession');
+        assert.deepEqual(apiTexts.slice(sessionStart), ['Dr. Smith is here.', 'Xin chào!', '你好。', 'こんにちは。']);
+        await vscode.commands.executeCommand('pronounciation.playSession');
+        assert.equal(apiTexts.length, sessionStart + 4, 'Session replay must reuse the final sentence audio');
+        await vscode.commands.executeCommand('pronounciation.clearSession');
+        const replayStart = apiTexts.length;
+        await vscode.commands.executeCommand('pronounciation.repeat');
+        assert.equal(apiTexts.slice(replayStart).join(''), document.getText().trim(), 'Sessions must preserve ordinary replay text');
+        await config.update('reading.mode', undefined, vscode.ConfigurationTarget.Global);
+        await config.update('reading.locale', undefined, vscode.ConfigurationTarget.Global);
         await config.update('tts.activeProfile', 'local', vscode.ConfigurationTarget.Global);
         await config.update('tts.profiles', [], vscode.ConfigurationTarget.Global);
+        process.stdout.write(`Extension-host reading sessions passed on VS Code ${vscode.version} (${process.platform}).\n`);
     } finally {
         if (server) await new Promise(resolve => server.close(resolve));
         childProcess.spawn = originalSpawn;

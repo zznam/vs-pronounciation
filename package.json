@@ -56,7 +56,17 @@
     "onCommand:pronounciation.chooseTtsConnection",
     "onCommand:pronounciation.setApiKey",
     "onCommand:pronounciation.removeApiKey",
-    "onCommand:pronounciation.testTtsConnection"
+    "onCommand:pronounciation.testTtsConnection",
+    "onCommand:pronounciation.startSession",
+    "onCommand:pronounciation.startDocumentSession",
+    "onCommand:pronounciation.startInputSession",
+    "onCommand:pronounciation.startClipboardSession",
+    "onCommand:pronounciation.playSession",
+    "onCommand:pronounciation.previousSentence",
+    "onCommand:pronounciation.nextSentence",
+    "onCommand:pronounciation.chooseSentence",
+    "onCommand:pronounciation.setReadingMode",
+    "onCommand:pronounciation.clearSession"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -152,6 +162,52 @@
       {
         "command": "pronounciation.testTtsConnection",
         "title": "Pronunciation: Test Connection"
+      },
+      {
+        "command": "pronounciation.startSession",
+        "title": "Pronunciation: Start Reading Session"
+      },
+      {
+        "command": "pronounciation.startDocumentSession",
+        "title": "Pronunciation: Reading Session from Entire Document"
+      },
+      {
+        "command": "pronounciation.startInputSession",
+        "title": "Pronunciation: Reading Session from Typed Text"
+      },
+      {
+        "command": "pronounciation.startClipboardSession",
+        "title": "Pronunciation: Reading Session from Clipboard"
+      },
+      {
+        "command": "pronounciation.playSession",
+        "title": "Pronunciation: Play Reading Session",
+        "enablement": "pronounciation.sessionLoaded"
+      },
+      {
+        "command": "pronounciation.previousSentence",
+        "title": "Pronunciation: Previous Sentence",
+        "enablement": "pronounciation.sessionHasPrevious"
+      },
+      {
+        "command": "pronounciation.nextSentence",
+        "title": "Pronunciation: Next Sentence",
+        "enablement": "pronounciation.sessionHasNext"
+      },
+      {
+        "command": "pronounciation.chooseSentence",
+        "title": "Pronunciation: Choose Session Sentence",
+        "enablement": "pronounciation.sessionLoaded"
+      },
+      {
+        "command": "pronounciation.setReadingMode",
+        "title": "Pronunciation: Set Reading Session Mode",
+        "enablement": "pronounciation.sessionLoaded"
+      },
+      {
+        "command": "pronounciation.clearSession",
+        "title": "Pronunciation: Clear Reading Session",
+        "enablement": "pronounciation.sessionLoaded"
       }
     ],
     "keybindings": [
@@ -191,6 +247,10 @@
         },
         {
           "command": "pronounciation.readParagraph",
+          "group": "9_cutcopypaste@100"
+        },
+        {
+          "command": "pronounciation.startSession",
           "group": "9_cutcopypaste@100"
         },
         {
@@ -312,6 +372,22 @@
               }
             }
           }
+        },
+        "pronounciation.reading.locale": {
+          "type": "string",
+          "default": "auto",
+          "scope": "resource",
+          "description": "Sentence segmentation language tag, such as en, vi, zh or ja. auto uses the VS Code interface language. Captured when a reading session is loaded; does not choose a speech voice."
+        },
+        "pronounciation.reading.mode": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "continuous"
+          ],
+          "default": "manual",
+          "scope": "resource",
+          "description": "Default for new reading sessions. Manual reads one sentence; continuous reads from the current sentence to the end. Set Reading Session Mode changes only the loaded session."
         }
       }
     }
