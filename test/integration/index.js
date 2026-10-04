@@ -23,6 +23,7 @@ async function run() {
             const recording = { file: path.join(temp, `${recordings.length}.aiff`) };
             recordings.push(recording);
             const child = originalSpawn(command, [...args, '-o', recording.file], options);
+            recording.done = new Promise(resolve => child.once('close', resolve));
             const originalEnd = child.stdin.end;
             child.stdin.end = function(input, ...rest) {
                 recording.text = input;
@@ -64,6 +65,7 @@ async function run() {
             await vscode.commands.executeCommand('pronounciation.previousSentence');
             assert.deepEqual(recordings.slice(sessionStart).map(recording => recording.text), ['Dr. Smith is here.', 'Another sentence.', 'Dr. Smith is here.']);
             await vscode.commands.executeCommand('pronounciation.clearSession');
+            await require('./practice').practice({ recordings, local: true });
             for (const recording of recordings) {
                 const audio = await fs.readFile(recording.file);
                 assert.equal(audio.subarray(0, 4).toString(), 'FORM');
@@ -114,6 +116,7 @@ async function run() {
         const replayStart = apiTexts.length;
         await vscode.commands.executeCommand('pronounciation.repeat');
         assert.equal(apiTexts.slice(replayStart).join(''), document.getText().trim(), 'Sessions must preserve ordinary replay text');
+        await require('./practice').practice({ apiTexts, local: false });
         await config.update('reading.mode', undefined, vscode.ConfigurationTarget.Global);
         await config.update('reading.locale', undefined, vscode.ConfigurationTarget.Global);
         await config.update('tts.activeProfile', 'local', vscode.ConfigurationTarget.Global);

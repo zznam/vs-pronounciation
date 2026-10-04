@@ -102,14 +102,14 @@ test('guided API sessions freeze connection options, advance sentence by sentenc
     await h.run('clearSession'); assert.deepEqual(await fs.readdir(h.root), []);
 });
 
-test('Stop during session generation aborts the provider and prevents later sentences or audio', async t => {
+for (const command of ['playSession', 'practiceSession']) test(`Stop during session generation aborts the provider and prevents later sentences or audio (${command})`, async t => {
     const h = await setup(t);
     h.settings['reading.mode'] = 'continuous';
     h.vscode.window.showInputBox = async () => 'First sentence. Second sentence.';
     await h.run('startInputSession');
     const generated = deferred(); let signal;
     h.providers.synthesize = (profile, text, key, abortSignal) => { signal = abortSignal; return generated.promise; };
-    const run = h.run('playSession'); await until(() => signal);
+    const run = h.run(command); await until(() => signal);
     const stop = h.run('stop'); assert.equal(signal.aborted, true);
     generated.resolve(wav()); await Promise.all([run, stop]);
     assert.equal(h.extension.session.state.phase, 'stopped');
@@ -117,14 +117,14 @@ test('Stop during session generation aborts the provider and prevents later sent
     assert.equal(h.plays.length, 0); assert.deepEqual(await fs.readdir(h.root), []);
 });
 
-test('Stop during guided API playback stops the player once and prevents the next sentence', async t => {
+for (const command of ['playSession', 'practiceSession']) test(`Stop during guided API playback stops the player once and prevents the next sentence (${command})`, async t => {
     const h = await setup(t);
     h.settings['reading.mode'] = 'continuous';
     h.vscode.window.showInputBox = async () => 'First sentence. Second sentence.';
     await h.run('startInputSession');
     const played = deferred(); let active = false, stops = 0;
     h.player.play = () => { active = true; return { done: played.promise, async stop() { stops++; played.resolve(); } }; };
-    const run = h.run('playSession'); await until(() => active);
+    const run = h.run(command); await until(() => active);
     await h.run('stop'); await run;
     assert.equal(stops, 1); assert.equal(h.syntheses.length, 1);
     assert.equal(h.extension.session.state.index, 0);
@@ -145,3 +145,53 @@ test('session cloud recovery reads the failed sentence locally without advancing
     assert.equal(h.local.calls.length, 1);
     assert.equal(h.settings['tts.activeProfile'], 'test-connection');
 });
+
+test('practice reuses matching API audio, freezes profiles, and regenerates after sentence cache eviction', async t => {
+    const h = await setup(t);
+    h.settings['practice.repeatCount'] = 5; h.settings['practice.gapSeconds'] = 0;
+    h.settings['reading.mode'] = 'continuous';
+    h.vscode.window.showInputBox = async () => 'First sentence. Second sentence.';
+    await h.run('startInputSession');
+    const synthesize = h.providers.synthesize;
+    h.providers.synthesize = (...args) => {
+        h.settings['tts.profiles'][0].voice = 'cedar';
+        h.settings['practice.repeatCount'] = 2;
+        return synthesize(...args);
+    };
+    await h.run('practiceSession');
+    assert.equal(h.plays.length, 10); assert.equal(h.syntheses.length, 2);
+    assert.deepEqual(h.syntheses.map(call => call[1]), ['First sentence.', 'Second sentence.']);
+    assert.ok(h.syntheses.every(call => call[0].voice === 'marin'));
+    assert.match(h.status.text, /Sentence 2\/2.*Repeat 5\/5/);
+    await h.run('practiceSession');
+    assert.equal(h.plays.length, 12); assert.equal(h.syntheses.length, 3);
+    assert.equal(h.syntheses[2][0].voice, 'cedar');
+    await h.extension.session.setMode('manual');
+    await h.run('previousSentence');
+    assert.equal(h.plays.length, 14); assert.equal(h.syntheses.length, 4);
+    assert.equal(h.syntheses[3][1], 'First sentence.');
+    await h.run('playSession');
+    assert.equal(h.plays.length, 15); assert.equal(h.syntheses.length, 4);
+    assert.deepEqual(h.updates, []);
+});
+
+for (const command of ['stop', 'readInput', 'readClipboard', 'startInputSession', 'startClipboardSession', 'chooseSentence', 'setReadingMode', 'repeat', 'previewVoice']) {
+    test(`${command} cancels an API practice gap and keeps the shared Stop control accurate`, async t => {
+        const h = await setup(t);
+        h.vscode.window.showInputBox = async () => 'First sentence. Second sentence.';
+        await h.run('startInputSession');
+        const run = h.run('practiceSession'); await until(() => h.extension.session.state.phase === 'gap');
+        assert.equal(h.status.visible, true); assert.match(h.status.text, /Repeat 1\/3.*Gap \(2s\)/);
+        assert.equal(h.status.command, 'pronounciation.stop');
+        assert.deepEqual(h.contexts.filter(entry => entry[1] === 'pronounciation.speaking').at(-1), ['setContext', 'pronounciation.speaking', true]);
+        h.vscode.window.showInputBox = async () => undefined;
+        h.vscode.env.clipboard.readText = async () => '';
+        h.vscode.window.showQuickPick = async choices => command === 'previewVoice' ? choices[0] : undefined;
+        await h.run(command); await run;
+        assert.equal(h.extension.session.state.phase, 'stopped');
+        assert.equal(h.extension.session.state.index, 0);
+        assert.equal(h.status.visible, false);
+        assert.equal(h.plays.length, command === 'previewVoice' ? 2 : 1);
+        assert.deepEqual(h.contexts.filter(entry => entry[1] === 'pronounciation.speaking').at(-1), ['setContext', 'pronounciation.speaking', false]);
+    });
+}

@@ -4,9 +4,9 @@ The first wave adds immutable multilingual reading sessions, manual/continuous p
 
 | Wave | Branch | Status / prerequisite |
 | --- | --- | --- |
-| 1 | `codex/reading-sessions` | Implemented in this feature branch; review and merge before wave 2. |
-| 2 | `codex/repeat-practice` | Planned after reading sessions merges. |
-| 2 | `codex/sentence-highlighting` | Planned after reading sessions merges. |
+| 1 | `codex/reading-sessions` | Merged in PR #10. |
+| 2 | `codex/repeat-practice` | In review: [PR #11](https://github.com/zznam/vs-pronounciation/pull/11). |
+| 2 | `codex/sentence-highlighting` | In review: [PR #12](https://github.com/zznam/vs-pronounciation/pull/12). |
 | 3 | `codex/practice-sidebar` | Planned after both wave 2 PRs merge. |
 | 4 | `codex/vocabulary-bookmarks` | Planned after the sidebar merges. |
 | 4 | `codex/practice-presets` | Planned after the sidebar merges. |
