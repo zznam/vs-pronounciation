@@ -1,5 +1,6 @@
 const { createVoiceControls } = require('./voice-controls');
 const { Playback } = require('./playback');
+const { createSentenceHighlighter } = require('./sentence-highlighter');
 const { MAX_TEXT_LENGTH, prepareText, getLine, getParagraph, getSelections } = require('./text');
 const { createTtsBackend } = require('./tts-backend');
 const { createTtsControls } = require('./tts-controls');
@@ -86,6 +87,7 @@ function registerExtension(vscode, context, backend, discoverVoices, ttsDependen
     const preview = (text, options) => { ++inputRequest; readingSession.interrupt(); return playback.speak(text, { ...options, preview: true }); };
     const ttsControls = createTtsControls(vscode, context, preview, () => speech.clearReplay(), ttsDependencies.providers);
     const voiceControls = createVoiceControls(vscode, preview, discoverVoices, ttsControls);
+    const highlighter = createSentenceHighlighter(vscode, readingSession);
 
     const readingControls = createReadingControls(vscode, readingSession, {
         claim: () => { readingSession.interrupt(); return ++inputRequest; },
@@ -164,6 +166,7 @@ function registerExtension(vscode, context, backend, discoverVoices, ttsDependen
         },
         ...readingControls.commands,
         ...voiceControls.commands,
+        ...highlighter.commands,
         ...ttsControls.commands
     };
     for (const [name, handler] of Object.entries(commands)) {
@@ -179,6 +182,7 @@ function registerExtension(vscode, context, backend, discoverVoices, ttsDependen
                 disposed = true;
                 ++inputRequest;
                 for (const key of ['sessionLoaded', 'sessionHasPrevious', 'sessionHasNext']) void vscode.commands.executeCommand('setContext', `pronounciation.${key}`, false);
+                highlighter.dispose();
                 disposal = readingSession.dispose().then(() => playback.dispose()).then(() => speech.dispose());
                 voiceControls.dispose();
                 ttsControls.dispose();

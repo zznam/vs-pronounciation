@@ -52,6 +52,12 @@ Run **Start Reading Session** to capture the primary selection, or the current p
 
 A session captures original text and prepares each sentence once with the source document's pronunciation settings. Later document edits do not alter that captured passage. Reload the session to use edited text or changed replacement settings. The input and complete prepared passage both obey the existing character limit. Sessions remain in memory only and are discarded when the extension deactivates.
 
+The current sentence is highlighted in visible source editors using theme colors, without moving your cursor or selection. The highlight remains when playback stops so you can see your position. Disable it with `pronounciation.reading.highlightSentence`.
+
+Auto-follow is off by default. Use **Pronunciation: Toggle Reading Auto-follow** or `pronounciation.reading.autoFollow` to scroll during playback. Following only scrolls an already-visible source editor; it never opens or focuses an editor. Selecting a sentence stays silent and does not scroll until playback starts. Highlighting and following are independent preferences.
+
+Editing or closing the source removes its highlight and disables following for that captured passage, even if you reopen or undo the edit. Speech continues from the snapshot. Start a new session to capture the updated source. Typed and clipboard sessions have no source decoration.
+
 `pronounciation.reading.locale` accepts language tags such as `en`, `vi`, `zh`, and `ja`; its default `auto` uses the VS Code interface language. This controls sentence boundaries, not the speaking voice or automatic language detection. Segmentation uses the host's Unicode rules, with targeted English/Vietnamese title and Latin-initial handling. Blank lines always separate paragraphs. Unusual abbreviations and lowercase sentence starts can still be grouped differently from human expectations; select a shorter passage when needed.
 
 **Practice Reading Session** repeats the current sentence three times by default, with two seconds of silence between renditions. Configure `pronounciation.practice.repeatCount` from 2–5 and `pronounciation.practice.gapSeconds` from 0–10 (fractional seconds are allowed). Manual mode finishes after the current sentence's repetitions. Continuous mode practices every remaining sentence, with the same gap between sentences and no trailing gap after completion. Connection, voice, speed, and practice settings are captured for the run; subsequent changes apply on the next Practice or navigation request.
