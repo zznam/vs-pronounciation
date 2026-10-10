@@ -444,7 +444,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@vscode/vsce": "4.0.0",
-    "eslint": "^10.11.0",
+    "eslint": "^10.12.0",
     "yauzl": "3.4.0"
   }
 }
