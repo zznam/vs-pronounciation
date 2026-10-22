@@ -3,8 +3,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { createProviders, splitPassage, validateProfile } = require('./tts-providers');
 const { createAudioPlayer } = require('./audio-player');
-
-function secretKey(id) { return `pronounciation.tts.apiKey.${id}`; }
+const { secretKey, readApiKey } = require('./credentials');
 
 function createTtsBackend(local, { secrets, providers = createProviders(), player = createAudioPlayer(), files = fs, tempRoot = os.tmpdir() } = {}) {
     let cache;
@@ -14,7 +13,8 @@ function createTtsBackend(local, { secrets, providers = createProviders(), playe
     const busy = new Set();
     const jobs = new Set();
     async function remove(directory) {
-        if (busy.has(directory)) { retained.add(directory); return; }
+        retained.add(directory);
+        if (busy.has(directory)) return;
         await files.rm(directory, { recursive: true, force: true });
         retained.delete(directory);
     }
@@ -23,7 +23,8 @@ function createTtsBackend(local, { secrets, providers = createProviders(), playe
             ++epoch;
             const old = cache;
             cache = undefined;
-            if (old) await remove(old.directory);
+            if (old) retained.add(old.directory);
+            await Promise.all([...retained].map(remove));
         },
         speak(text, options = {}, onPhase) {
             if (!options.profile) {
@@ -39,7 +40,7 @@ function createTtsBackend(local, { secrets, providers = createProviders(), playe
             const done = (async () => {
                 try {
                     validateProfile(profile);
-                    const key = await secrets.get(secretKey(profile.id)) || '';
+                    const key = await readApiKey(secrets, profile);
                     if (controller.signal.aborted) return;
                     const signature = JSON.stringify([text, profile, key]);
                     await player.ensureReady();
@@ -57,13 +58,13 @@ function createTtsBackend(local, { secrets, providers = createProviders(), playe
                         if (controller.signal.aborted) return;
                         const file = path.join(directory, `${i}.wav`);
                         if (!hit) {
-                            onPhase?.('generating', profile.name);
+                            onPhase?.('generating', profile.name, { chunk: i + 1, chunks: chunks.length });
                             const audio = await providers.synthesize(profile, chunks[i], key, controller.signal);
                             if (controller.signal.aborted) return;
                             await files.writeFile(file, audio, { mode: 0o600 });
                         }
                         if (controller.signal.aborted) return;
-                        onPhase?.('playing', profile.name);
+                        onPhase?.('playing', profile.name, { chunk: i + 1, chunks: chunks.length });
                         active = player.play(file);
                         await active.done;
                         active = undefined;

@@ -1,7 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const { createProviders, validateProfile, speedRange } = require('./tts-providers');
 const { validateEndpoint } = require('./api-client');
-const { secretKey } = require('./tts-backend');
+const { secretKey, readApiKey, encodeApiKey } = require('./credentials');
 
 const DISCLOSURE = 'API speech sends text to this service, may incur charges, and uses AI-generated voices.';
 const TEST_TEXT = 'Hello. This is a test of your text to speech connection.';
@@ -49,7 +49,7 @@ function createTtsControls(vscode, context, preview, invalidate, providers = cre
         const controller = new AbortController();
         pending.add(controller);
         try {
-            const key = await context.secrets.get(secretKey(profile.id)) || '';
+            const key = await readApiKey(context.secrets, profile);
             if (disposed) return [];
             return kind === 'voices' ? await providers.voices(profile, key, controller.signal) : await providers.models(profile.provider, key, controller.signal);
         } finally { pending.delete(controller); }
@@ -146,7 +146,7 @@ function createTtsControls(vscode, context, preview, invalidate, providers = cre
             const key = await vscode.window.showInputBox({ title: `API key: ${selected.profile.name}`, password: true, prompt: 'Stored securely on this computer; never written to settings JSON.', validateInput: required });
             if (key === undefined || disposed) return;
             if (JSON.stringify(profiles().find(item => item.id === selected.profile.id)) !== JSON.stringify(selected.profile)) return;
-            await context.secrets.store(secretKey(selected.profile.id), key.trim());
+            await context.secrets.store(secretKey(selected.profile.id), encodeApiKey(selected.profile, key));
             await invalidate();
         },
         async removeApiKey() {

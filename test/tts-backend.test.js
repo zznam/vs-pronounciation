@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { createTtsBackend, secretKey } = require('../src/tts-backend');
+const { encodeApiKey } = require('../src/credentials');
 const { fakeBackend, deferred, tick } = require('./helpers');
 const { profile, wav, until } = require('./tts-helpers');
 
@@ -14,7 +15,7 @@ async function setup(t, overrides = {}) {
     const calls = [], played = [], phases = [];
     const providers = { async synthesize(...args) { calls.push(args); return wav(); } };
     const player = { async ensureReady() {}, play(file) { played.push(file); return { done: Promise.resolve(), async stop() {} }; } };
-    const secrets = { async get(id) { assert.equal(id, secretKey('test-connection')); return 'key'; } };
+    const secrets = { async get(id) { assert.equal(id, secretKey('test-connection')); return encodeApiKey(profile(), 'key'); } };
     const backend = createTtsBackend(local, { providers, player, secrets, tempRoot: root, ...overrides });
     t.after(() => backend.dispose());
     const speak = (text = 'Hello', options = { profile: profile() }) => backend.speak(text, options, (...phase) => phases.push(phase));
@@ -57,7 +58,7 @@ test('different text, settings, endpoints and keys invalidate previously generat
     await h.speak('new text').done;
     await assert.rejects(fs.access(previous));
     await h.speak('new text', { profile: profile({ speed: 0.5 }) }).done;
-    h.secrets.get = async () => 'changed-key';
+    h.secrets.get = async () => encodeApiKey(profile(), 'changed-key');
     await h.speak('new text', { profile: profile({ speed: 0.5 }) }).done;
     assert.equal(h.calls.length, 4);
     await h.backend.dispose();
@@ -147,10 +148,10 @@ test('clear replay defers removing files currently in use until playback finishe
 test('cancellation during secret lookup or player checks never starts an HTTP request', async t => {
     const secret = deferred();
     const h = await setup(t, { secrets: { get: () => secret.promise } });
-    const run = h.speak(); const stop = run.stop(); secret.resolve('key'); await stop;
+    const run = h.speak(); const stop = run.stop(); secret.resolve(encodeApiKey(profile(), 'key')); await stop;
     assert.equal(h.calls.length, 0);
     const ready = deferred();
-    h.secrets.get = async () => 'key'; h.player.ensureReady = () => ready.promise;
+    h.secrets.get = async () => encodeApiKey(profile(), 'key'); h.player.ensureReady = () => ready.promise;
     const next = h.speak(); await tick(); const stopping = next.stop(); ready.resolve(); await stopping;
     assert.equal(h.calls.length, 0);
 });
@@ -162,5 +163,18 @@ test('deactivation stops active jobs and removes their audio, including late gen
     const run = h.speak(); await until(() => h.phases.length > 0); const dispose = h.backend.dispose();
     generated.resolve(wav()); await Promise.all([dispose, run.done]);
     assert.equal(h.played.length, 0);
+    assert.deepEqual(await fs.readdir(h.root), []);
+});
+
+test('failed audio deletion remains tracked so Clear Replay can retry cleanup', async t => {
+    let fail = true;
+    const h = await setup(t, { files: { ...fs, async rm(...args) {
+        if (fail) { fail = false; throw new Error('locked file'); }
+        return fs.rm(...args);
+    } } });
+    await h.speak().done;
+    await assert.rejects(h.backend.clearReplay(), /locked file/);
+    assert.equal((await fs.readdir(h.root)).length, 1);
+    await h.backend.clearReplay();
     assert.deepEqual(await fs.readdir(h.root), []);
 });

@@ -1,3 +1,5 @@
+const { practiceSpeech } = require('./practice');
+
 class Playback {
     constructor(backend, onState, onError, onPhase) {
         this.backend = backend;
@@ -9,19 +11,20 @@ class Playback {
         this.disposed = false;
     }
 
-    async speak(text, options, onPhase) {
+    async speak(text, options, onPhase, practice) {
         if (this.disposed) return { status: 'cancelled' };
         const request = ++this.request;
         try {
             await this.current?.stop();
             // Only the newest request may start after the previous process has exited.
             if (request !== this.request || this.disposed) return { status: 'cancelled' };
-            const playback = this.backend.speak(text, options, (phase, name) => {
+            const publishPhase = (phase, name, progress) => {
                 if (request === this.request && !this.disposed) {
-                    this.onPhase?.(phase, name);
-                    onPhase?.(phase, name);
+                    this.onPhase?.(phase, name, progress);
+                    onPhase?.(phase, name, progress);
                 }
-            });
+            };
+            const playback = practice ? practiceSpeech(this.backend, text, options, practice, publishPhase) : this.backend.speak(text, options, publishPhase);
             this.current = playback;
             this.onState(true, options);
             try {
@@ -39,6 +42,8 @@ class Playback {
             return { status: 'failed', error };
         }
     }
+
+    finishPractice() { this.current?.endRepetitions?.(); }
 
     async stop() {
         const request = ++this.request;

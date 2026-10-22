@@ -73,3 +73,36 @@ test('ElevenLabs inventories paginate voices and filter models without exposing 
     await assert.rejects(createProviders({ jsonRequest: async () => ({}) }).models('elevenlabs'), /unreadable model/);
     await assert.rejects(createProviders({ jsonRequest: async () => ({ voices: [], has_more: true, next_page_token: 'same' }) }).voices(profile({ provider: 'elevenlabs' })), /pagination/);
 });
+
+test('WAV validation rejects inconsistent PCM headers, partial frames and malformed container chunks', () => {
+    for (const [offset, size, value] of [[4, 4, 1], [16, 4, 8], [22, 2, 0], [24, 4, 0], [28, 4, 1], [32, 2, 0], [34, 2, 12], [40, 4, 479], [40, 4, 0]]) {
+        const audio = wav();
+        if (size === 2) audio.writeUInt16LE(value, offset); else audio.writeUInt32LE(value, offset);
+        assert.throws(() => validateWav(audio), /invalid|unsupported/);
+    }
+    assert.throws(() => validateWav('not audio'), /WAV/);
+    const tail = Buffer.concat([wav(), Buffer.alloc(3)]); tail.writeUInt32LE(tail.length - 8, 4);
+    assert.throws(() => validateWav(tail), /invalid/);
+    const duplicate = Buffer.concat([wav(), wav().subarray(12, 36)]); duplicate.writeUInt32LE(duplicate.length - 8, 4);
+    assert.throws(() => validateWav(duplicate), /invalid/);
+    const missingFormat = wav(); missingFormat.write('JUNK', 12);
+    assert.throws(() => validateWav(missingFormat), /invalid/);
+    const metadata = Buffer.concat([wav().subarray(0, 36), Buffer.from('JUNK\x01\x00\x00\x00x\x00', 'binary'), wav().subarray(36)]);
+    metadata.writeUInt32LE(metadata.length - 8, 4);
+    assert.deepEqual(validateWav(metadata), metadata);
+    const odd = Buffer.concat([wav().subarray(0, 44), Buffer.from([1])]);
+    odd.writeUInt32LE(odd.length - 8, 4); odd.writeUInt32LE(24000, 28); odd.writeUInt16LE(1, 32); odd.writeUInt16LE(8, 34); odd.writeUInt32LE(1, 40);
+    assert.throws(() => validateWav(odd), /invalid/);
+});
+
+test('provider lists tolerate null records and reject incomplete pagination without leaking data', async () => {
+    const p = profile({ provider: 'elevenlabs' });
+    const provider = createProviders({ jsonRequest: async url => url.endsWith('/models') ? [null, { model_id: 'tts', can_do_text_to_speech: true }]
+        : { voices: [null, { voice_id: 'id', name: 'Name', labels: { language: {} } }] } });
+    assert.deepEqual(await provider.models('elevenlabs'), ['tts']);
+    assert.deepEqual(await provider.voices(p), [{ id: 'id', name: 'Name', locale: '' }]);
+    await assert.rejects(createProviders({ jsonRequest: async () => null }).voices(p), /unreadable voice/);
+    for (const next_page_token of [undefined, '', 123]) {
+        await assert.rejects(createProviders({ jsonRequest: async () => ({ voices: [], has_more: true, next_page_token }) }).voices(p), /pagination/);
+    }
+});

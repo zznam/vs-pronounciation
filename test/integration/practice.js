@@ -43,6 +43,10 @@ async function practice({ recordings, apiTexts, local }) {
         await command('clearSession');
     } finally {
         for (const key of ['reading.mode', 'practice.repeatCount', 'practice.gapSeconds']) await update(key, undefined);
+        if (!document.isClosed) {
+            await vscode.window.showTextDocument(document);
+            await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+        }
     }
 }
 module.exports = { practice };

@@ -68,7 +68,8 @@
     "onCommand:pronounciation.nextSentence",
     "onCommand:pronounciation.chooseSentence",
     "onCommand:pronounciation.setReadingMode",
-    "onCommand:pronounciation.clearSession"
+    "onCommand:pronounciation.clearSession",
+    "onCommand:pronounciation.practice"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -219,6 +220,10 @@
         "command": "pronounciation.clearSession",
         "title": "Pronunciation: Clear Reading Session",
         "enablement": "pronounciation.sessionLoaded"
+      },
+      {
+        "command": "pronounciation.practice",
+        "title": "Pronunciation: Practice Last Text"
       }
     ],
     "keybindings": [
@@ -291,7 +296,7 @@
         "pronounciation.readWordAtCursor": {
           "type": "boolean",
           "default": true,
-          "scope": "window",
+          "scope": "resource",
           "description": "Read the word at the cursor when no text is selected."
         },
         "pronounciation.maxTextLength": {
@@ -299,7 +304,7 @@
           "default": 50000,
           "minimum": 1,
           "maximum": 50000,
-          "scope": "window",
+          "scope": "resource",
           "description": "Maximum characters in a requested or prepared passage. Lower this to prevent accidental long playback."
         },
         "pronounciation.speakCodeIdentifiers": {
@@ -427,6 +432,14 @@
           "default": false,
           "scope": "application",
           "description": "Scroll an already-visible, unchanged source editor to the current sentence during guided playback. Never opens or focuses editors."
+        },
+        "pronounciation.practiceGap": {
+          "type": "integer",
+          "default": 1000,
+          "minimum": 0,
+          "maximum": 10000,
+          "scope": "application",
+          "description": "Gap in milliseconds between practice repeats (0–10,000). Practice Last Text offers 2–5 repeats; Stop cancels the whole session."
         }
       }
     }
@@ -439,7 +452,8 @@
     "check": "npm run lint && npm run test:coverage",
     "package": "node scripts/package.js",
     "verify:package": "node scripts/verify-vsix.js artifacts/pronunciation.vsix",
-    "test:audio": "node scripts/smoke-audio.js"
+    "test:audio": "node scripts/smoke-audio.js",
+    "test:integration:package": "node test/integration/run.js --package"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

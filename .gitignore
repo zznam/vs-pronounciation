@@ -4,3 +4,5 @@ node_modules
 coverage
 .vscode-test
 artifacts
+.DS_Store
+graft/

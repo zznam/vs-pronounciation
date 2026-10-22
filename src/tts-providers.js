@@ -18,30 +18,47 @@ function validateProfile(profile) {
 }
 
 function validateWav(audio) {
-    if (audio.length < 44 || audio.toString('ascii', 0, 4) !== 'RIFF' || audio.toString('ascii', 8, 12) !== 'WAVE') {
+    if (!Buffer.isBuffer(audio) || audio.length < 44 || audio.toString('ascii', 0, 4) !== 'RIFF' || audio.toString('ascii', 8, 12) !== 'WAVE') {
         throw new Error('Speech API did not return a WAV audio file.');
     }
+    const invalid = () => { throw new Error('Speech API returned an invalid or unsupported PCM WAV file.'); };
+    const declaredSize = audio.readUInt32LE(4);
+    if (declaredSize !== 0xffffffff && declaredSize !== audio.length - 8) invalid();
     let format = false;
     let data = false;
-    for (let offset = 12; offset + 8 <= audio.length;) {
+    let blockAlign;
+    let streamingData;
+    for (let offset = 12; offset < audio.length;) {
+        if (offset + 8 > audio.length) invalid();
         const kind = audio.toString('ascii', offset, offset + 4);
-        const size = audio.readUInt32LE(offset + 4);
-        if (kind === 'fmt ' && size >= 16 && offset + 24 <= audio.length) {
+        let size = audio.readUInt32LE(offset + 4);
+        if (kind === 'data' && size === 0xffffffff) {
+            streamingData = offset + 4;
+            size = audio.length - offset - 8;
+        }
+        if (size > audio.length - offset - 8) invalid();
+        if (kind === 'fmt ') {
+            if (format || size < 16) invalid();
             const encoding = audio.readUInt16LE(offset + 8);
             const channels = audio.readUInt16LE(offset + 10);
             const rate = audio.readUInt32LE(offset + 12);
-            format = encoding === 1 && channels >= 1 && channels <= 2 && rate > 0;
+            const byteRate = audio.readUInt32LE(offset + 16);
+            blockAlign = audio.readUInt16LE(offset + 20);
+            const bits = audio.readUInt16LE(offset + 22);
+            format = encoding === 1 && channels >= 1 && channels <= 2 && rate > 0 && [8, 16, 24, 32].includes(bits)
+                && blockAlign === channels * bits / 8 && byteRate === rate * blockAlign;
+            if (!format) invalid();
         }
         if (kind === 'data') {
-            // Streaming WAV headers can use an unknown-length sentinel.
-            data = audio.length > offset + 8 && (size === 0xffffffff || size > 0 && offset + 8 + size <= audio.length);
-            if (data && size === 0xffffffff) audio.writeUInt32LE(audio.length - offset - 8, offset + 4);
-            break;
+            if (!format || data || !size || size % blockAlign) invalid();
+            data = true;
         }
-        if (size > audio.length - offset - 8) break;
+        if (size % 2 && offset + 8 + size === audio.length) invalid();
         offset += 8 + size + size % 2;
     }
-    if (!format || !data) throw new Error('Speech API returned an invalid or unsupported PCM WAV file.');
+    if (!format || !data) invalid();
+    // Normalize streaming sentinels only after validating the entire PCM container.
+    if (streamingData !== undefined) audio.writeUInt32LE(audio.length - streamingData - 4, streamingData);
     audio.writeUInt32LE(audio.length - 8, 4);
     return audio;
 }
@@ -88,9 +105,10 @@ function createProviders({ audioRequest = requestApi, jsonRequest = requestJson 
             const seen = new Set();
             do {
                 const result = await jsonRequest(`https://api.elevenlabs.io/v2/voices?page_size=100${token ? `&next_page_token=${encodeURIComponent(token)}` : ''}`, { key, header: 'xi-api-key', signal });
-                if (!Array.isArray(result.voices)) throw new Error('Speech API returned an unreadable voice list.');
-                voices.push(...result.voices.filter(v => typeof v.voice_id === 'string' && typeof v.name === 'string').map(v => ({ id: v.voice_id, name: v.name, locale: v.labels?.language || '' })));
+                if (!Array.isArray(result?.voices)) throw new Error('Speech API returned an unreadable voice list.');
+                voices.push(...result.voices.filter(v => v && typeof v.voice_id === 'string' && typeof v.name === 'string').map(v => ({ id: v.voice_id, name: v.name, locale: typeof v.labels?.language === 'string' ? v.labels.language : '' })));
                 token = result.has_more ? result.next_page_token : '';
+                if (result.has_more && (typeof token !== 'string' || !token)) throw new Error('Speech API voice pagination did not finish. Enter a voice ID manually.');
                 if (token && (seen.has(token) || seen.size >= 100)) throw new Error('Speech API voice pagination did not finish. Enter a voice ID manually.');
                 seen.add(token);
             } while (token);
@@ -100,7 +118,7 @@ function createProviders({ audioRequest = requestApi, jsonRequest = requestJson 
             if (provider !== 'elevenlabs') return provider === 'openai' ? OPENAI_MODELS : [];
             const models = await jsonRequest('https://api.elevenlabs.io/v1/models', { key, header: 'xi-api-key', signal });
             if (!Array.isArray(models)) throw new Error('Speech API returned an unreadable model list.');
-            return models.filter(m => m.can_do_text_to_speech && typeof m.model_id === 'string').map(m => m.model_id);
+            return models.filter(m => m && m.can_do_text_to_speech && typeof m.model_id === 'string').map(m => m.model_id);
         }
     };
 }

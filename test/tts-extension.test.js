@@ -6,15 +6,16 @@ const path = require('node:path');
 const { registerExtension } = require('../src/extension');
 const { fakeBackend, fakeEditor, deferred, tick } = require('./helpers');
 const { controlsEnvironment, profile, wav, until } = require('./tts-helpers');
+const { secretKey, encodeApiKey } = require('../src/credentials');
 
-async function setup(t) {
+async function setup(t, dependencies = {}) {
     const h = controlsEnvironment();
     h.settings['tts.profiles'] = [profile()]; h.settings['tts.activeProfile'] = 'test-connection';
     const local = fakeBackend(); const syntheses = [], plays = [];
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pronunciation-extension-test-'));
     const providers = { async synthesize(...args) { syntheses.push(args); return wav(); }, voices: async () => [{ id: 'cedar', name: 'Cedar' }], models: async () => ['gpt-4o-mini-tts'] };
     const player = { async ensureReady() {}, play(file) { plays.push(file); return { done: Promise.resolve(), async stop() {} }; } };
-    const extension = registerExtension(h.vscode, h.context, local, async () => [], { providers, player, tempRoot: root });
+    const extension = registerExtension(h.vscode, h.context, local, async () => [], { providers, player, tempRoot: root, ...dependencies });
     t.after(async () => { await extension.dispose(); await fs.rm(root, { recursive: true, force: true }); });
     return { ...h, local, providers, player, extension, syntheses, plays, root, run: name => h.handlers.get(`pronounciation.${name}`)() };
 }
@@ -175,7 +176,7 @@ test('practice reuses matching API audio, freezes profiles, and regenerates afte
     assert.deepEqual(h.updates, []);
 });
 
-for (const command of ['stop', 'readInput', 'readClipboard', 'startInputSession', 'startClipboardSession', 'chooseSentence', 'setReadingMode', 'repeat', 'previewVoice']) {
+for (const command of ['stop', 'readInput', 'readClipboard', 'startInputSession', 'startClipboardSession', 'chooseSentence', 'setReadingMode', 'repeat', 'practice', 'previewVoice']) {
     test(`${command} cancels an API practice gap and keeps the shared Stop control accurate`, async t => {
         const h = await setup(t);
         h.vscode.window.showInputBox = async () => 'First sentence. Second sentence.';
@@ -195,3 +196,67 @@ for (const command of ['stop', 'readInput', 'readClipboard', 'startInputSession'
         assert.deepEqual(h.contexts.filter(entry => entry[1] === 'pronounciation.speaking').at(-1), ['setContext', 'pronounciation.speaking', false]);
     });
 }
+
+test('manual settings and secret changes remove cached audio, while unrelated events and disposal are harmless', async t => {
+    const h = await setup(t); h.vscode.window.activeTextEditor = fakeEditor('private');
+    await h.run('pronounce');
+    h.configurationChanged.fire({ affectsConfiguration: () => false });
+    h.secretChanged.fire({ key: 'another-secret' }); await tick();
+    assert.equal((await fs.readdir(h.root)).length, 1);
+    await h.config.update('tts.profiles', [profile({ speed: 0.5 })], 1);
+    await until(async () => (await fs.readdir(h.root)).length === 0);
+    assert.deepEqual(await fs.readdir(h.root), []);
+    await h.run('repeat');
+    h.secretChanged.fire({ key: secretKey('test-connection') });
+    await until(async () => (await fs.readdir(h.root)).length === 0);
+    assert.deepEqual(await fs.readdir(h.root), []);
+    await h.extension.dispose();
+    assert.equal(h.configurationChanged.listeners.size, 0); assert.equal(h.secretChanged.listeners.size, 0);
+});
+
+test('an API key cannot follow an endpoint or provider edited directly in settings', async t => {
+    const h = await setup(t); h.vscode.window.activeTextEditor = fakeEditor('private');
+    h.keys.set(secretKey('test-connection'), encodeApiKey(profile(), 'never-send-me'));
+    h.settings['tts.profiles'] = [profile({ provider: 'custom', endpoint: 'https://another.example/speech' })];
+    await h.run('pronounce');
+    assert.equal(h.syntheses.length, 0); assert.equal(h.plays.length, 0);
+    assert.match(h.errors[0], /Set API Key again/); assert.ok(!h.errors[0].includes('never-send-me'));
+});
+
+test('practice reuses API audio, includes part/repeat progress, and clearing replay prevents later repeats', async t => {
+    const h = await setup(t); h.vscode.window.activeTextEditor = fakeEditor('x'.repeat(2500));
+    await h.run('pronounce');
+    h.vscode.window.showQuickPick = async choices => choices[0]; h.settings.practiceGap = 0;
+    const phases = [];
+    h.player.play = file => { phases.push(h.status.text); h.plays.push(file); return { done: Promise.resolve(), async stop() {} }; };
+    await h.run('practice');
+    assert.equal(h.syntheses.length, 2); assert.equal(h.plays.length, 6);
+    assert.match(phases.at(-1), /Repeat 2\/2 · Part 2\/2/);
+    const current = deferred(); h.player.play = () => ({ done: current.promise, async stop() { current.resolve(); } });
+    const run = h.run('practice'); await until(() => h.status.visible && h.status.text.includes('Playing'));
+    await h.run('clearReplay'); current.resolve(); await run;
+    assert.deepEqual(await fs.readdir(h.root), []);
+    await h.run('repeat'); assert.match(h.info.at(-1), /Pronounce some text first/);
+});
+
+test('failed settings-triggered cleanup offers recovery without leaking file details, and Clear Replay retries', async t => {
+    let fail = true;
+    const h = await setup(t, { files: { ...fs, async rm(...args) {
+        if (fail) { fail = false; throw new Error('private path'); }
+        return fs.rm(...args);
+    } } });
+    h.vscode.window.activeTextEditor = fakeEditor('private'); await h.run('pronounce');
+    await h.config.update('speed', 0.5, 1);
+    await until(() => h.errors.length > 0);
+    assert.match(h.errors[0], /Try Clear Replay Text again/); assert.ok(!h.errors[0].includes('private path'));
+    await h.run('clearReplay'); assert.deepEqual(await fs.readdir(h.root), []);
+});
+
+test('a read rejected by an invalid connection preserves the previous replay passage', async t => {
+    const h = await setup(t); h.vscode.window.activeTextEditor = fakeEditor('remember'); await h.run('pronounce');
+    h.settings['tts.activeProfile'] = 'missing'; h.vscode.window.activeTextEditor = fakeEditor('rejected');
+    await h.run('pronounce'); assert.match(h.info.at(-1), /missing/);
+    h.settings['tts.activeProfile'] = 'test-connection';
+    await h.run('repeat');
+    assert.equal(h.syntheses.length, 1); assert.equal(h.plays.length, 2);
+});

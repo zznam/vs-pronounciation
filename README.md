@@ -13,15 +13,22 @@ Select a word, sentence, or passage, then right-click and choose **Pronunciation
 | Read Selection or Word | Cmd+Ctrl+P | Ctrl+Alt+P |
 | Stop | Cmd+Ctrl+S | Ctrl+Alt+S |
 | Replay Last Text | Cmd+Ctrl+R | Ctrl+Alt+R |
+| Practice Last Text | Command Palette | Command Palette |
 | Set Speed | Command Palette | Command Palette |
 
 While speech is playing, click **Stop pronunciation** in the status bar or use Stop from the editor context menu. A new request stops the previous one before starting. Stopping also cancels any pending replacement. Closing or disabling the extension stops playback.
 
 Replay uses the last requested passage with your **current** connection, voice and speed, even after switching editors. Passage text is retained in memory and cleared when the extension deactivates. Local speech never sends text to a cloud service. With an API connection selected, requested text is sent to that service and generation may incur charges. Passages are limited to 50,000 characters to keep accidental large selections manageable.
 
-API playback splits long passages into chunks of at most 2,000 characters, preferring sentence and whitespace boundaries and keeping Unicode character sequences intact. Each chunk is generated and played in order. Stop cancels the current request or audio and prevents the remaining chunks from starting. Status shows the connection name and **Generating** or **Playing**.
+API playback splits long passages into chunks of at most 2,000 characters, preferring sentence and whitespace boundaries and keeping Unicode character sequences intact. Each chunk is generated and played in order. Stop cancels the current request or audio and prevents the remaining chunks from starting. Status shows the connection name, **Generating** or **Playing**, and the current part for long passages. Screen readers receive the same progress information.
 
-The last completed API passage is kept as temporary WAV files for session replay. Replay reuses those files when text, connection settings, and credentials match, avoiding another API request. New passages, preference changes, **Clear Replay Text**, and normal shutdown remove cached audio. Previews use separate temporary audio and do not replace replay. Clear Replay during playback defers deletion of files in use until playback ends. An unexpected process exit can leave temporary audio in the operating system's temporary directory; there is no permanent history or export feature.
+The last completed API passage is kept as temporary WAV files for session replay. Replay reuses those files when text, connection settings, and credentials match, avoiding another API request. New passages, preference changes (including direct settings edits), credential changes, **Clear Replay Text**, and normal shutdown remove cached audio. Previews use separate temporary audio and do not replace replay. Clear Replay during playback defers deletion of files in use until playback ends. Failed deletion remains tracked so Clear Replay can retry. An unexpected process exit can leave temporary audio in the operating system's temporary directory; there is no permanent history or export feature.
+
+### Practice a passage
+
+Read a word or passage once, then run **Pronunciation: Practice Last Text** and choose **2–5 repeats**. Practice works without an editor, uses the current connection and voice settings, and reuses prepared text without applying pronunciation replacements again. The status bar shows the repeat number and remains available during gaps. Set `pronounciation.practiceGap` to a gap from 0 to 10,000 milliseconds (default: 1,000).
+
+**Stop**, another read, a preview, or deactivation cancels the session, including any waiting gap. A speech failure ends the remaining repeats. **Clear Replay Text** lets the current passage finish and cancels subsequent repeats. API practice reuses cached audio when available; changing settings or clearing the cache can require fresh generation and incur charges. Settings changes apply to a subsequent session; an active practice session keeps its original voice and speed.
 
 ## More reading options
 
@@ -38,7 +45,7 @@ Optional settings can split code identifiers (`getHTTPResponse` becomes `get HTT
 }
 ```
 
-The passage limit applies before and after preparation. Its default is 50,000 characters and can be lowered to any positive integer. Oversized text is rejected with guidance and never silently truncated.
+The passage limit applies before and after preparation. Its default is 50,000 characters and can be lowered to any positive integer. Oversized text is rejected with guidance and never silently truncated. Passage limits and cursor-word reading use the originating document's settings, including folder-specific preferences in a multi-root workspace.
 
 ## Guided reading sessions
 
@@ -77,6 +84,7 @@ Open Settings and search for **Pronunciation**.
 | `pronounciation.voice` | `""` | Installed voice name; empty uses the system default. Machine setting because installed voices differ between computers. |
 | `pronounciation.speed` | `1` | Relative speed, from `0.25` to `3`. User setting; the Set Speed command provides common presets. |
 | `pronounciation.readWordAtCursor` | `true` | Allow reading the cursor word when there is no selection. |
+| `pronounciation.practiceGap` | `1000` | Milliseconds between practice repeats, from `0` to `10000`. |
 
 For example, `"pronounciation.speed": 0.75` slows speech down. Exact timing depends on the operating system and voice. Changes apply to the next read or replay, not to audio already playing.
 
@@ -97,6 +105,8 @@ With an API connection active, voice and speed controls update that profile inst
 5. Run **Pronunciation: Choose TTS Connection** to activate it, then use any existing reading command. Select **Local speech** to return to offline voices.
 
 Manage Connections also edits or removes profiles. Removing the active profile selects Local speech and deletes its key. Changing a custom endpoint through this command discards the old key; set the destination's key again. Voice, speed and connection changes affect the next request, while current playback keeps its original settings.
+
+Keys are bound to their provider and complete custom endpoint, including its path and query. Changing a destination directly in Settings cannot send the saved key to the new destination. Run **Set API Key** again for that destination, or **Remove API Key** for a custom endpoint that needs no authentication. Keys saved by earlier builds have no destination binding and must be entered once again after upgrading. Local speech and connection settings need no migration.
 
 `pronounciation.tts.profiles` stores non-secret connection metadata and `pronounciation.tts.activeProfile` stores the selected ID (`local` by default). Both are machine settings. Existing settings and keybindings work without migration. Custom connections require a complete speech URL, accepting an OpenAI-compatible JSON request with `input`, `model`, `voice`, `speed`, and `response_format: "wav"`, and returning PCM WAV audio. Bearer authentication is optional for custom endpoints. HTTPS is required except for HTTP on `localhost`, `127.0.0.1`, or `::1`; redirects are rejected.
 
@@ -151,6 +161,8 @@ Use that name in `/Applications/Visual Studio Code.app/Contents/MacOS/<executabl
 
 This test opens a temporary VS Code profile, verifies activation and commands, and removes the test profile afterward. On macOS it also exercises reading commands through the real `say` engine, directing output to temporary AIFF files instead of speakers. On every platform it uses a local HTTP fixture to exercise custom API requests, Unicode chunking, real WAV playback, cached replay, and cache clearing without paid credentials. The platform WAV player and a working audio output are required. This optional test is separate from the unit-test CI matrix.
 
+After packaging, run `npm run test:integration:package` with the same executable setting to test the freshly extracted VSIX. This also exercises the practice picker, repeated cached playback, and cleanup after a direct settings change. Package verification runs before extraction, and the temporary extension and profile are removed afterward.
+
 ## Packaging
 
 ```sh
@@ -158,7 +170,7 @@ npm run check
 npm run package
 ```
 
-The package command uses the pinned VSCE development dependency, writes `artifacts/pronunciation.vsix`, and verifies that its manifest matches the source, every runtime module and license is present, and tests, development tools, environment files, and dependencies are excluded. CI builds this archive and retains it as an artifact without publishing to the Marketplace. Dependency and GitHub Actions update PRs are scheduled weekly with Dependabot.
+The package command uses the pinned VSCE development dependency and writes `artifacts/pronunciation.vsix`. Only runtime modules, the manifest, README, license, and Marketplace icon are included. Verification rejects unexpected archive entries and compares runtime code, the manifest, license, and icon with their sources, preventing local tool caches, environment files, tests, or stale code from entering a release. VSCE rewrites README links for the Marketplace. CI builds this archive and retains it as an artifact without publishing to the Marketplace. Dependency and GitHub Actions update PRs are scheduled weekly with Dependabot.
 
 Install the generated `.vsix` using **Extensions: Install from VSIX**. Publishing requires configuring a Marketplace publisher; no publisher account is assumed here.
 
