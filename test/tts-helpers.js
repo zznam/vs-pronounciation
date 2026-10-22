@@ -1,4 +1,4 @@
-const { fakeVscode } = require('./helpers');
+const { fakeVscode, fakeEvent } = require('./helpers');
 const { setTimeout } = require('node:timers/promises');
 
 function wav(seconds = 0.01) {
@@ -17,17 +17,19 @@ function controlsEnvironment() {
     const h = fakeVscode();
     const keys = new Map();
     const secretCalls = [];
+    const secretChanged = fakeEvent();
     const context = { subscriptions: [], secrets: {
+        onDidChange: secretChanged.subscribe,
         async get(id) { return keys.get(id); },
         async store(id, value) { keys.set(id, value); secretCalls.push(['store', id]); },
         async delete(id) { keys.delete(id); secretCalls.push(['delete', id]); }
     } };
-    return { ...h, context, keys, secretCalls };
+    return { ...h, context, keys, secretCalls, secretChanged };
 }
 
 async function until(predicate) {
     for (let i = 0; i < 200; i++) {
-        if (predicate()) return;
+        if (await predicate()) return;
         await setTimeout(1);
     }
     throw new Error('Timed out waiting for the test boundary.');

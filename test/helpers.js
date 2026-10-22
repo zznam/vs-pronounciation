@@ -8,6 +8,15 @@ function deferred() {
     return { promise, resolve, reject };
 }
 
+function fakeEvent() {
+    const listeners = new Set();
+    return {
+        subscribe(listener) { listeners.add(listener); return { dispose: () => listeners.delete(listener) }; },
+        fire(event) { for (const listener of listeners) listener(event); },
+        listeners
+    };
+}
+
 function fakeBackend({ autoStop = true } = {}) {
     const calls = [];
     return {
@@ -87,6 +96,11 @@ function fakeVscode() {
     const listen = name => handler => { events.on(name, handler); return { dispose: () => events.off(name, handler) }; };
     const info = [], errors = [], updates = [], contexts = [];
     const settings = {};
+    const configurationChanged = {
+        subscribe: listen('configuration'),
+        fire: event => events.emit('configuration', event),
+        get listeners() { return new Set(events.listeners('configuration')); }
+    };
     const status = {
         visible: false, disposed: 0,
         show() { this.visible = true; },
@@ -95,7 +109,10 @@ function fakeVscode() {
     };
     const config = {
         get: (key, fallback) => settings[key] ?? fallback,
-        async update(key, value, target) { settings[key] = value; updates.push({ key, value, target }); events.emit('configuration', { affectsConfiguration: section => `pronounciation.${key}`.startsWith(section) }); }
+        async update(key, value, target) {
+            settings[key] = value; updates.push({ key, value, target });
+            configurationChanged.fire({ affectsConfiguration: section => `pronounciation.${key}`.startsWith(section) });
+        }
     };
     const vscode = {
         Range: class { constructor(start, end) { this.start = start; this.end = end; } },
@@ -128,10 +145,10 @@ function fakeVscode() {
             getConfiguration: () => config,
             onDidChangeTextDocument: listen('change'),
             onDidCloseTextDocument: listen('close'),
-            onDidChangeConfiguration: listen('configuration')
+            onDidChangeConfiguration: configurationChanged.subscribe
         }
     };
-    return { vscode, handlers, info, errors, updates, contexts, settings, status, config, events, decorations };
+    return { vscode, handlers, info, errors, updates, contexts, settings, status, config, events, decorations, configurationChanged };
 }
 
-module.exports = { tick, deferred, fakeBackend, fakeChild, fakeEditor, fakeVscode, documentEditor };
+module.exports = { tick, deferred, fakeBackend, fakeChild, fakeEditor, fakeVscode, documentEditor, fakeEvent };

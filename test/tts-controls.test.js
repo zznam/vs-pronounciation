@@ -2,6 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { createTtsControls, TEST_TEXT, DISCLOSURE, required } = require('../src/tts-controls');
 const { secretKey } = require('../src/tts-backend');
+const { readApiKey } = require('../src/credentials');
 const { controlsEnvironment, profile } = require('./tts-helpers');
 const { deferred, tick } = require('./helpers');
 
@@ -105,7 +106,7 @@ test('API key commands use masked input and encrypted storage; cancellations do 
     h.picks.push(first); await h.run('setApiKey'); assert.deepEqual(h.secretCalls, []);
     h.picks.push(first); h.inputs.push('  private-key  '); await h.run('setApiKey');
     assert.equal(h.inputOptions[1].password, true);
-    assert.equal(h.keys.get(secretKey(p.id)), 'private-key'); assert.deepEqual(h.updates, []);
+    assert.equal(await readApiKey(h.context.secrets, p), 'private-key'); assert.deepEqual(h.updates, []);
     h.picks.push(first); await h.run('removeApiKey'); assert.equal(h.keys.size, 0); assert.equal(h.invalidations(), 2);
 });
 

@@ -5,8 +5,8 @@ The first wave adds immutable multilingual reading sessions, manual/continuous p
 | Wave | Branch | Status / prerequisite |
 | --- | --- | --- |
 | 1 | `codex/reading-sessions` | Merged in PR #10. |
-| 2 | `codex/repeat-practice` | In review: [PR #11](https://github.com/zznam/vs-pronounciation/pull/11). |
-| 2 | `codex/sentence-highlighting` | In review: [PR #12](https://github.com/zznam/vs-pronounciation/pull/12). |
+| 2 | `codex/repeat-practice` | Merged: [PR #11](https://github.com/zznam/vs-pronounciation/pull/11). |
+| 2 | `codex/sentence-highlighting` | Merged: [PR #12](https://github.com/zznam/vs-pronounciation/pull/12). |
 | 3 | `codex/practice-sidebar` | Planned after both wave 2 PRs merge. |
 | 4 | `codex/vocabulary-bookmarks` | Planned after the sidebar merges. |
 | 4 | `codex/practice-presets` | Planned after the sidebar merges. |
@@ -16,6 +16,20 @@ Use one managed worktree and one PR per topic, each targeting updated `main`. In
 ---
 
 # Improvement brainstorm and delivery plan
+
+## Overall improvement pass — 2026-10-22
+
+- Added **Practice Last Text** with 2–5 repeats, adjustable gaps, cached API replay, and cancellation during speech or gaps. Clear Replay finishes the current passage and prevents later repeats.
+- Added repeat/part progress to the Stop control, including its accessible label.
+- Aligned passage-limit and cursor-word settings with the originating document's folder, removing scope warnings in the real extension host.
+- Bound encrypted API keys to the provider and complete endpoint, including when settings are edited manually. Earlier unbound keys require one-time re-entry.
+- Invalidate cached audio on direct settings and credential changes; retain failed deletion work for retry.
+- Reject malformed PCM headers, truncated frames, invalid provider inventories, and incomplete voice pagination.
+- Package only intended runtime assets, compare their bytes with source, and provide `test:integration:package` for the actual VSIX.
+
+The historical plans and verification records below remain for context. Export, vocabulary storage, true pause/resume, minimum-host testing, and remote-host placement checks are still separate backlog work.
+
+Validation after integrating the guided-reading changes from main: `npm run check` passed 207 tests with 100% line, 98.63% branch, and 98.13% function coverage; lint and package verification passed. `npm audit` reported zero vulnerabilities. Native macOS WAV playback/cancellation and the extracted-VSIX extension-host test passed, including native reading, sentence navigation, highlighting, both practice modes, local HTTP synthesis, Unicode chunking, cached replay, and cleanup after settings edits. Paid provider accounts and native Windows/Linux audio were not exercised in this pass. The integration runner bounds execution time and waits across the picker renderer boundary instead of relying on a single fixed delay.
 
 Implemented after the original offline batches: configurable TTS connections for OpenAI, ElevenLabs and OpenAI-compatible custom APIs, encrypted API keys, guided native controls, sequential long-passage playback, session audio replay, and explicit local recovery. Local speech remains the default. See README.md for setup and privacy behavior. The cloud exclusions below describe the original batches rather than the current extension.
 
@@ -49,12 +63,12 @@ Planning date: 2026-10-03. These 34 ideas build on the existing offline speech e
 | 24 | Speech error recovery action | Open filtered voice/speed settings from an error; dismissal and deactivation make no changes. | High | S | C |
 | 25 | Package validation in CI | Produce a VSIX and verify required runtime files and excluded test files. | High | M | C |
 | 26 | Maintenance automation | Reviewable dependency updates and reusable bug/feature issue forms. | Medium | S | C |
-| 27 | Sentence stepping | Previous/next sentence with abbreviation, decimal, and non-Latin punctuation handling. | High | M | Backlog |
-| 28 | Bounded practice loops | Repeat 2–5 times with cancellable gaps; no unlimited default loop. | High | M | Backlog |
+| 27 | Sentence stepping | Previous/next sentence with abbreviation, decimal, and non-Latin punctuation handling. | High | M | Implemented in PR #10 |
+| 28 | Bounded practice loops | Repeat 2–5 times with cancellable gaps; no unlimited default loop. | High | M | Implemented 2026-10-22 |
 | 29 | Audio export | Native save dialog, supported formats, cancellation, and partial-file cleanup. | Medium | M | Backlog |
 | 30 | Explicit vocabulary bookmarks | Opt-in storage with limits and remove/export/clear controls. | Medium | M | Backlog |
 | 31 | Dictionary definitions and IPA | Licensed source, language and provenance, explicit opt-in networking. | Medium | L | Backlog |
-| 32 | True pause/resume and highlighting | Requires reliable native progress/timing; never label restart as resume. | Medium | L | Backlog |
+| 32 | True pause/resume and highlighting | Sentence highlighting shipped in PR #12. True pause/resume still needs reliable native timing; never label restart as resume. | Medium | L | Pause/resume backlog |
 | 33 | Native Windows/Linux audio smoke tests | Generate actual audio and verify cancellation and Unicode on those engines. | High | M | Backlog |
 | 34 | Minimum-host and Remote SSH/WSL checks | Validate declared VS Code minimum and local extension placement. | High | M | Backlog |
 
