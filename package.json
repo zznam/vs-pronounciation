@@ -457,8 +457,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@vscode/vsce": "4.0.0",
-    "eslint": "^10.13.0",
+    "@vscode/vsce": "4.1.0",
+    "eslint": "^10.14.0",
     "yauzl": "3.4.0"
   }
 }
